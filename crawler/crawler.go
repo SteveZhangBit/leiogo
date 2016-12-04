@@ -105,18 +105,19 @@ func (c *Crawler) crawl(req *leiogo.Request, spider *leiogo.Spider) {
 	c.Parsers[req.ParserName](res, req, spider)
 }
 
-func (c *Crawler) NewRequest(req *leiogo.Request, parRes *leiogo.Response, spider *leiogo.Spider) {
+func (c *Crawler) NewRequest(req *leiogo.Request, parRes *leiogo.Response, spider *leiogo.Spider) error {
 	if parRes != nil {
 		for _, m := range c.SpiderMiddlewares {
 			if ok := c.handleErr(m.ProcessNewRequest(req, parRes, spider), req, m, spider); !ok {
-				return
+				return nil
 			}
 		}
 	}
 	c.addRequest(req)
+	return nil
 }
 
-func (c *Crawler) NewItem(item *leiogo.Item, spider *leiogo.Spider) {
+func (c *Crawler) NewItem(item *leiogo.Item, spider *leiogo.Spider) error {
 	c.count.Add()
 	go func() {
 		for _, p := range c.ItemPipelines {
@@ -132,4 +133,5 @@ func (c *Crawler) NewItem(item *leiogo.Item, spider *leiogo.Spider) {
 		}
 		c.count.Done()
 	}()
+	return nil
 }

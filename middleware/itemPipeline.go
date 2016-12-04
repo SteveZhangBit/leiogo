@@ -51,7 +51,9 @@ func (p *ImagePipeline) Process(item *leiogo.Item, spider *leiogo.Spider) error 
 			imgRequest.Meta["type"] = "file"
 			imgRequest.Meta["filepath"] = filepath
 
-			p.NewRequest(imgRequest, nil, spider)
+			if err := p.NewRequest(imgRequest, nil, spider); err != nil {
+				p.Logger.Error(spider.Name, "Add img request error %s", err.Error())
+			}
 		}
 	}
 	return nil

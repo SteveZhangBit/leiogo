@@ -29,8 +29,8 @@ type SpiderMiddleware interface {
 }
 
 type Yielder interface {
-	NewRequest(req *leiogo.Request, parRes *leiogo.Response, spider *leiogo.Spider)
-	NewItem(item *leiogo.Item, spider *leiogo.Spider)
+	NewRequest(req *leiogo.Request, parRes *leiogo.Response, spider *leiogo.Spider) error
+	NewItem(item *leiogo.Item, spider *leiogo.Spider) error
 }
 
 type Base struct {

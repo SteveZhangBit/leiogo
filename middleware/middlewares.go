@@ -157,7 +157,9 @@ func (m *RetryMiddleware) Open(spider *leiogo.Spider) error {
 func (m *RetryMiddleware) ProcessResponse(res *leiogo.Response, req *leiogo.Request, spider *leiogo.Spider) error {
 	if res.Err != nil {
 		if m.isRetriable(req) {
-			m.NewRequest(req, nil, spider)
+			if err := m.NewRequest(req, nil, spider); err != nil {
+				m.Logger.Error(spider.Name, "Add new request error, %s", err.Error())
+			}
 		}
 		return &DropTaskError{Message: res.Err.Error()}
 	}

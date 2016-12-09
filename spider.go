@@ -4,6 +4,8 @@ import (
 	"github.com/satori/go.uuid"
 )
 
+type Dict map[string]interface{}
+
 type Spider struct {
 	Name           string
 	StartURLs      []*Request
@@ -12,14 +14,14 @@ type Spider struct {
 
 type Request struct {
 	URL        string
-	Meta       map[string]interface{}
+	Meta       Dict
 	ParserName string
 }
 
 func NewRequest(url string) *Request {
 	return &Request{
 		URL:        url,
-		Meta:       make(map[string]interface{}),
+		Meta:       make(Dict),
 		ParserName: "default",
 	}
 }
@@ -28,15 +30,15 @@ type Response struct {
 	Err        error
 	StatusCode int
 	Body       []byte
-	Meta       map[string]interface{}
+	Meta       Dict
 }
 
 type Item struct {
 	ID   string
-	Data map[string]interface{}
+	Data Dict
 }
 
-func NewItem(data map[string]interface{}) *Item {
+func NewItem(data Dict) *Item {
 	return &Item{
 		ID:   uuid.NewV4().String(),
 		Data: data,

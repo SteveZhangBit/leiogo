@@ -24,7 +24,6 @@ func (err *DropTaskError) Error() string {
 // Cause each middleware will be called in different goroutines,
 // So Locking is necessary.
 type CacheMiddleware struct {
-	Base
 	BaseMiddleware
 	Cache map[string]struct{}
 	mutex sync.RWMutex
@@ -53,7 +52,6 @@ func (m *CacheMiddleware) ProcessResponse(res *leiogo.Response, req *leiogo.Requ
 // Delay each request for 'DownloadDelay' seconds to avoid blocking of some websites.
 // If RandomizeDelay is true, each delay = delay * [0.5, 1.5)
 type DelayMiddleware struct {
-	Base
 	BaseMiddleware
 	DownloadDelay  float64
 	RandomizeDelay bool
@@ -72,7 +70,6 @@ func (m *DelayMiddleware) ProcessRequest(req *leiogo.Request, spider *leiogo.Spi
 // DepthMiddleware controls the max crawling depth of the spider.
 // When DepthLimit is 0, there's no limitation.
 type DepthMiddleware struct {
-	Base
 	BaseMiddleware
 	DepthLimit int
 }
@@ -102,7 +99,6 @@ func (m *DepthMiddleware) ProcessNewRequest(req *leiogo.Request, parentRes *leio
 
 // HttpErrorMiddleware will drop all the responses with status code not 200.
 type HttpErrorMiddleware struct {
-	Base
 	BaseMiddleware
 }
 
@@ -116,7 +112,6 @@ func (m *HttpErrorMiddleware) ProcessResponse(res *leiogo.Response, req *leiogo.
 
 // OffSiteMiddleware will drop all the requests failing to match any AllowedDomain.
 type OffSiteMiddleware struct {
-	Base
 	BaseMiddleware
 }
 
@@ -142,7 +137,6 @@ func (m *OffSiteMiddleware) ProcessRequest(req *leiogo.Request, spider *leiogo.S
 // When the downloader failed to download the request, retry middleware would put the request
 // back to the task queue only if it hadn't reach the max retry times.
 type RetryMiddleware struct {
-	Base
 	BaseMiddleware
 	RetryEnabled bool
 	RetryTimes   int

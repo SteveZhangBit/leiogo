@@ -16,6 +16,10 @@ var (
 	ConcurrentRequests = 32
 )
 
+type DefaultParser struct {
+	*Crawler
+}
+
 func NewDownloader() middleware.Downloader {
 	return &middleware.DefaultDownloader{
 		Logger:       log.New("Downloader"),
@@ -34,13 +38,13 @@ func NewProxyDownloader(url string) middleware.Downloader {
 
 func NewOffSiteMiddleware() middleware.DownloadMiddleware {
 	return &middleware.OffSiteMiddleware{
-		Base: middleware.Base{Logger: log.New("OffSiteMiddleware")},
+		BaseMiddleware: middleware.NewBaseMiddleware("OffSiteMiddleware"),
 	}
 }
 
 func NewDelayMiddleware() middleware.DownloadMiddleware {
 	return &middleware.DelayMiddleware{
-		Base:           middleware.Base{Logger: log.New("DelayMiddleware")},
+		BaseMiddleware: middleware.NewBaseMiddleware("DelayMiddleware"),
 		DownloadDelay:  DownloadDelay,
 		RandomizeDelay: RandomizeDelay,
 	}
@@ -48,36 +52,36 @@ func NewDelayMiddleware() middleware.DownloadMiddleware {
 
 func NewRetryMiddleware(yielder middleware.Yielder) middleware.DownloadMiddleware {
 	return &middleware.RetryMiddleware{
-		Base:         middleware.Base{Logger: log.New("RetryMiddleware")},
-		RetryEnabled: RetryEnabled,
-		RetryTimes:   RetryTimes,
-		Yielder:      yielder,
+		BaseMiddleware: middleware.NewBaseMiddleware("RetryMiddleware"),
+		RetryEnabled:   RetryEnabled,
+		RetryTimes:     RetryTimes,
+		Yielder:        yielder,
 	}
 }
 
 func NewCacheMiddleware() middleware.DownloadMiddleware {
 	return &middleware.CacheMiddleware{
-		Base:  middleware.Base{Logger: log.New("CacheMiddleware")},
-		Cache: make(map[string]struct{}),
+		BaseMiddleware: middleware.NewBaseMiddleware("CacheMiddleware"),
+		Cache:          make(map[string]struct{}),
 	}
 }
 
 func NewHttpErrorMiddleware() middleware.SpiderMiddleware {
 	return &middleware.HttpErrorMiddleware{
-		Base: middleware.Base{Logger: log.New("HttpErrorMiddleware")},
+		BaseMiddleware: middleware.NewBaseMiddleware("HttpErrorMiddleware"),
 	}
 }
 
 func NewDepthMiddleware() middleware.SpiderMiddleware {
 	return &middleware.DepthMiddleware{
-		Base:       middleware.Base{Logger: log.New("DepthMiddleware")},
-		DepthLimit: DepthLimit,
+		BaseMiddleware: middleware.NewBaseMiddleware("DepthMiddleware"),
+		DepthLimit:     DepthLimit,
 	}
 }
 
 func NewImagePipeline(dir string, yielder middleware.Yielder) middleware.ItemPipeline {
 	return &middleware.ImagePipeline{
-		Base:    middleware.Base{Logger: log.New("ImagePipeline")},
+		Base:    middleware.NewBasePipeline("ImagePipeline"),
 		DirPath: dir,
 		Yielder: yielder,
 	}
@@ -85,6 +89,6 @@ func NewImagePipeline(dir string, yielder middleware.Yielder) middleware.ItemPip
 
 func NewSaveImageMiddleware() middleware.SpiderMiddleware {
 	return &middleware.SaveImageMiddleware{
-		Base: middleware.Base{Logger: log.New("SaveImageMiddleware")},
+		BaseMiddleware: middleware.NewBaseMiddleware("SaveImageMiddleware"),
 	}
 }

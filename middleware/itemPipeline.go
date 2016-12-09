@@ -41,7 +41,9 @@ func (p *ImagePipeline) Process(item *leiogo.Item, spider *leiogo.Spider) error 
 	if filepath, ok := item.Data["filepath"].(string); ok {
 		subpath = path.Join(p.DirPath, filepath)
 	}
-	os.MkdirAll(subpath, os.ModeDir)
+	if err := os.MkdirAll(subpath, os.ModeDir); err != nil {
+		p.Logger.Error(spider.Name, "Create directory failed, %s", err.Error())
+	}
 
 	for _, url := range item.Data["fileurls"].([]string) {
 		ext := url[strings.LastIndex(url, "."):]
@@ -66,7 +68,6 @@ func hashURL(input string) string {
 }
 
 type SaveImageMiddleware struct {
-	Base
 	BaseMiddleware
 }
 
@@ -78,10 +79,10 @@ func (m *SaveImageMiddleware) ProcessResponse(res *leiogo.Response, req *leiogo.
 		m.Logger.Info(spider.Name, "Saving %s to %s", req.URL, filepath)
 
 		if f, err := os.Create(filepath); err == nil {
+			defer f.Close()
 			if _, err := f.Write(res.Body); err != nil {
 				return errors.New(fmt.Sprintf("Saving %s fail, %s", req.URL, err.Error()))
 			} else {
-				f.Close()
 				return &DropTaskError{Message: "Saving image completed"}
 			}
 		} else {

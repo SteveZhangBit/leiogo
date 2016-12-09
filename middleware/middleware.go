@@ -51,7 +51,9 @@ func (b *Base) HandleErr(err error, spider *leiogo.Spider) {
 	b.Logger.Error(spider.Name, "%s", err.Error())
 }
 
-type BaseMiddleware struct{}
+type BaseMiddleware struct {
+	Base
+}
 
 func (b *BaseMiddleware) ProcessRequest(req *leiogo.Request, spider *leiogo.Spider) error {
 	return nil
@@ -63,4 +65,12 @@ func (b *BaseMiddleware) ProcessResponse(res *leiogo.Response, req *leiogo.Reque
 
 func (b *BaseMiddleware) ProcessNewRequest(req *leiogo.Request, parentRes *leiogo.Response, spider *leiogo.Spider) error {
 	return nil
+}
+
+func NewBasePipeline(name string) Base {
+	return Base{Logger: log.New(name)}
+}
+
+func NewBaseMiddleware(name string) BaseMiddleware {
+	return BaseMiddleware{Base: NewBasePipeline(name)}
 }

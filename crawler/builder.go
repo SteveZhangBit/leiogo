@@ -16,9 +16,9 @@ func (c *CrawlerBuilder) Build() *Crawler {
 
 func CreateCrawlerBuilder() *CrawlerBuilder {
 	return &CrawlerBuilder{Crawler: &Crawler{
-		requests:            make(chan *leiogo.Request),
+		requests:            make(chan *leiogo.Request, 1),
 		tokens:              make(chan struct{}, ConcurrentRequests),
-		count:               ConcurrentCount{done: make(chan bool)},
+		count:               ConcurrentCount{done: make(chan bool, 1)},
 		Logger:              log.New("Crawler"),
 		DownloadMiddlewares: make([]middleware.DownloadMiddleware, 0),
 		SpiderMiddlewares:   make([]middleware.SpiderMiddleware, 0),

@@ -1,6 +1,8 @@
 package crawler
 
 import (
+	"github.com/SteveZhangBit/css/selector"
+	"github.com/SteveZhangBit/leiogo"
 	"github.com/SteveZhangBit/leiogo/middleware"
 	"github.com/SteveZhangBit/log"
 	"time"
@@ -16,8 +18,36 @@ var (
 	ConcurrentRequests = 32
 )
 
+type PatternFunc func(el *selector.Elements) interface{}
+
 type DefaultParser struct {
 	*Crawler
+}
+
+func (d *DefaultParser) RunPattern(patterns map[string]PatternFunc, res *leiogo.Response, spider *leiogo.Spider) {
+	doc := selector.Parse(string(res.Body))
+	for key, val := range patterns {
+		if el := doc.Find(key); el.Err != nil {
+			d.Logger.Error(spider.Name, "Error at querying %s, %s", key, el.Err)
+		} else {
+			switch x := val(el).(type) {
+			case *leiogo.Item:
+				d.NewItem(x, spider)
+			case []*leiogo.Item:
+				for _, item := range x {
+					d.NewItem(item, spider)
+				}
+			case *leiogo.Request:
+				d.NewRequest(x, res, spider)
+			case []*leiogo.Request:
+				for _, req := range x {
+					d.NewRequest(req, res, spider)
+				}
+			default:
+				d.Logger.Error(spider.Name, "Unknown return type for patter function %T", x)
+			}
+		}
+	}
 }
 
 func NewDownloader() middleware.Downloader {

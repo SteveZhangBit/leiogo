@@ -85,12 +85,11 @@ func NewDelayMiddleware() middleware.DownloadMiddleware {
 	}
 }
 
-func NewRetryMiddleware(yielder middleware.Yielder) middleware.DownloadMiddleware {
+func NewRetryMiddleware() middleware.DownloadMiddleware {
 	return &middleware.RetryMiddleware{
 		BaseMiddleware: middleware.NewBaseMiddleware("RetryMiddleware"),
 		RetryEnabled:   RetryEnabled,
 		RetryTimes:     RetryTimes,
-		Yielder:        yielder,
 	}
 }
 
@@ -114,11 +113,10 @@ func NewDepthMiddleware() middleware.SpiderMiddleware {
 	}
 }
 
-func NewImagePipeline(dir string, yielder middleware.Yielder) middleware.ItemPipeline {
+func NewImagePipeline(dir string) middleware.ItemPipeline {
 	return &middleware.ImagePipeline{
 		Base:    middleware.NewBasePipeline("ImagePipeline"),
 		DirPath: dir,
-		Yielder: yielder,
 	}
 }
 

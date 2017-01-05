@@ -4,6 +4,7 @@ import (
 	"github.com/SteveZhangBit/leiogo"
 	"github.com/SteveZhangBit/leiogo/middleware"
 	"github.com/SteveZhangBit/log"
+	"reflect"
 )
 
 type CrawlerBuilder struct {
@@ -33,7 +34,7 @@ func DefaultCrawlerBuilder() *CrawlerBuilder {
 	c.AddDownloadMiddlewares(
 		NewOffSiteMiddleware(),
 		NewDelayMiddleware(),
-		NewRetryMiddleware(c.Crawler),
+		NewRetryMiddleware(),
 		NewCacheMiddleware(),
 	)
 	c.AddSpiderMiddlewares(
@@ -43,8 +44,18 @@ func DefaultCrawlerBuilder() *CrawlerBuilder {
 	return c
 }
 
+func (c *CrawlerBuilder) addYielder(m interface{}) {
+	v := reflect.ValueOf(m).Elem()
+	for i := 0; i < v.NumField(); i++ {
+		if v.Type().Field(i).Type.String() == "middleware.Yielder" {
+			v.Field(i).Set(reflect.ValueOf(c.Crawler))
+		}
+	}
+}
+
 func (c *CrawlerBuilder) AddDownloadMiddlewares(ms ...middleware.DownloadMiddleware) *CrawlerBuilder {
 	for _, m := range ms {
+		c.addYielder(m)
 		c.Crawler.DownloadMiddlewares = append(c.Crawler.DownloadMiddlewares, m)
 	}
 	return c
@@ -52,6 +63,7 @@ func (c *CrawlerBuilder) AddDownloadMiddlewares(ms ...middleware.DownloadMiddlew
 
 func (c *CrawlerBuilder) AddSpiderMiddlewares(ms ...middleware.SpiderMiddleware) *CrawlerBuilder {
 	for _, m := range ms {
+		c.addYielder(m)
 		c.Crawler.SpiderMiddlewares = append(c.Crawler.SpiderMiddlewares, m)
 	}
 	return c
@@ -74,6 +86,7 @@ func (c *CrawlerBuilder) AddParser(name string, p middleware.Parser) *CrawlerBui
 
 func (c *CrawlerBuilder) AddItemPipelines(ps ...middleware.ItemPipeline) *CrawlerBuilder {
 	for _, p := range ps {
+		c.addYielder(p)
 		c.Crawler.ItemPipelines = append(c.Crawler.ItemPipelines, p)
 	}
 	return c
@@ -81,6 +94,6 @@ func (c *CrawlerBuilder) AddItemPipelines(ps ...middleware.ItemPipeline) *Crawle
 
 func (c *CrawlerBuilder) AddImageDownloadSupport(path string) *CrawlerBuilder {
 	c.AddSpiderMiddlewares(NewSaveImageMiddleware())
-	c.AddItemPipelines(NewImagePipeline(path, c.Crawler))
+	c.AddItemPipelines(NewImagePipeline(path))
 	return c
 }

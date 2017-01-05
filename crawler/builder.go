@@ -62,6 +62,11 @@ func (c *CrawlerBuilder) SetDownloader(d middleware.Downloader) *CrawlerBuilder 
 	return c
 }
 
+func (c *CrawlerBuilder) AddPhantomjsSupport() *CrawlerBuilder {
+	c.Crawler.Phantomjs = NewPhantomDownloader()
+	return c
+}
+
 func (c *CrawlerBuilder) AddParser(name string, p middleware.Parser) *CrawlerBuilder {
 	c.Crawler.Parsers[name] = p
 	return c
@@ -71,5 +76,11 @@ func (c *CrawlerBuilder) AddItemPipelines(ps ...middleware.ItemPipeline) *Crawle
 	for _, p := range ps {
 		c.Crawler.ItemPipelines = append(c.Crawler.ItemPipelines, p)
 	}
+	return c
+}
+
+func (c *CrawlerBuilder) AddImageDownloadSupport(path string) *CrawlerBuilder {
+	c.AddSpiderMiddlewares(NewSaveImageMiddleware())
+	c.AddItemPipelines(NewImagePipeline(path, c.Crawler))
 	return c
 }

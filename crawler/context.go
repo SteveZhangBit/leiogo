@@ -4,6 +4,7 @@ import (
 	"github.com/SteveZhangBit/css/selector"
 	"github.com/SteveZhangBit/leiogo"
 	"github.com/SteveZhangBit/leiogo/middleware"
+	"github.com/SteveZhangBit/leiogo/phantom"
 	"github.com/SteveZhangBit/log"
 	"time"
 )
@@ -64,6 +65,10 @@ func NewProxyDownloader(url string) middleware.Downloader {
 			Timeout:  Timeout,
 			ProxyURL: url},
 	}
+}
+
+func NewPhantomDownloader() middleware.Downloader {
+	return &phantom.PhantomDownloader{Logger: log.New("PhantomDownloader")}
 }
 
 func NewOffSiteMiddleware() middleware.DownloadMiddleware {

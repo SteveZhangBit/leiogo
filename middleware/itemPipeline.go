@@ -72,10 +72,10 @@ type SaveImageMiddleware struct {
 }
 
 func (m *SaveImageMiddleware) ProcessResponse(res *leiogo.Response, req *leiogo.Request, spider *leiogo.Spider) error {
-	_, typeOk := res.Meta["type"]
+	typeName, typeOk := res.Meta["type"].(string)
 	filepath, pathOK := res.Meta["filepath"].(string)
 
-	if typeOk && pathOK {
+	if typeOk && pathOK && typeName == "file" {
 		m.Logger.Info(spider.Name, "Saving %s to %s", req.URL, filepath)
 
 		if f, err := os.Create(filepath); err == nil {

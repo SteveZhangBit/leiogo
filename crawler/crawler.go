@@ -3,6 +3,7 @@ package crawler
 import (
 	"github.com/SteveZhangBit/leiogo"
 	"github.com/SteveZhangBit/leiogo/middleware"
+	"github.com/SteveZhangBit/leiogo/util"
 	"github.com/SteveZhangBit/log"
 	"os"
 	"os/signal"
@@ -58,11 +59,6 @@ type Crawler struct {
 	// and the crawler will print this information when it stops.
 	// More details can be found in the struct defination.
 	StatusInfo StatusInfo
-
-	// Add support for phantomjs. If user add 'phantomjs' = true to the requests' meta,
-	// and set phantomjsSupport to true when creating the crawler, such requests will
-	// be processed by phantomjs in a subprocess.
-	Phantomjs middleware.Downloader
 }
 
 func (c *Crawler) addRequest(req *leiogo.Request) {
@@ -93,12 +89,6 @@ func (c *Crawler) Crawl(spider *leiogo.Spider) {
 		m.Open(spider)
 	}
 
-	// Wait for all the requests to complete.
-	go func() {
-		c.count.Wait()
-		close(c.requests)
-	}()
-
 	// The crawler will catch the interrupt signal from OS.
 	// The process won't stop immediately when user press ctrl+c, instead,
 	// it will wait for the running requests and items to complete,
@@ -117,18 +107,28 @@ func (c *Crawler) Crawl(spider *leiogo.Spider) {
 		c.addRequest(req)
 	}
 
-	for req := range c.requests {
-		// In order to controll the concurrent requests, we use a special channel.
-		// To process a new request, we should first get a token. If there's no token remaining,
-		// the thread will wait.
-		c.tokens <- struct{}{}
-		go func(_req *leiogo.Request) {
-			c.crawl(_req, spider)
-			c.count.Done()
+	// If there isn't any start urls, then directly close the spider.
+	// Otherwise, the program will wait forever.
+	if len(spider.StartURLs) != 0 {
+		// Wait for all the requests to complete.
+		go func() {
+			c.count.Wait()
+			close(c.requests)
+		}()
 
-			// After a request has completed, release a token.
-			<-c.tokens
-		}(req)
+		for req := range c.requests {
+			// In order to controll the concurrent requests, we use a special channel.
+			// To process a new request, we should first get a token. If there's no token remaining,
+			// the thread will wait.
+			c.tokens <- struct{}{}
+			go func(_req *leiogo.Request) {
+				c.crawl(_req, spider)
+				c.count.Done()
+
+				// After a request has completed, release a token.
+				<-c.tokens
+			}(req)
+		}
 	}
 
 	c.Logger.Info(spider.Name, "Closing spider")
@@ -149,6 +149,7 @@ func (c *Crawler) Crawl(spider *leiogo.Spider) {
 func (c *Crawler) printStatus(spider *leiogo.Spider) {
 	c.Logger.Info(spider.Name, "%-10s - %s", "Start Date", c.StatusInfo.StartDate.Format("2006-01-02 15:04:05"))
 	c.Logger.Info(spider.Name, "%-10s - %s", "End Date", c.StatusInfo.EndDate.Format("2006-01-02 15:04:05"))
+	c.Logger.Info(spider.Name, "%-10s - %s", "Duration", util.FormatDuration(c.StatusInfo.EndDate.Sub(c.StatusInfo.StartDate)))
 	c.Logger.Info(spider.Name, "%-10s - %d", "Pages", c.StatusInfo.Pages)
 	c.Logger.Info(spider.Name, "%-10s - %d", "Crawled", c.StatusInfo.Crawled)
 	c.Logger.Info(spider.Name, "%-10s - %d", "Succeed", c.StatusInfo.Succeed)
@@ -188,16 +189,7 @@ func (c *Crawler) crawl(req *leiogo.Request, spider *leiogo.Spider) {
 		}
 	}
 
-	// We add a new feature here, phantomjs. Since we still need our default downloader to
-	// download those static files like images, so we make them to be two different downloaders.
-	// When a request is taged with 'phantomjs' = true as well as the phantomjs downloader is not nil,
-	// we should use phantomjs to dowload this request to get javascript runtime to support AJAX.
-	var res *leiogo.Response
-	if enable, ok := req.Meta["phantomjs"]; ok && enable.(bool) && c.Phantomjs != nil {
-		res = c.Phantomjs.Download(req, spider)
-	} else {
-		res = c.Downloader.Download(req, spider)
-	}
+	res := c.Downloader.Download(req, spider)
 	c.StatusInfo.Crawled++
 
 	for _, m := range c.DownloadMiddlewares {

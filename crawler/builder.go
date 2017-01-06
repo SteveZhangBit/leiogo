@@ -74,11 +74,6 @@ func (c *CrawlerBuilder) SetDownloader(d middleware.Downloader) *CrawlerBuilder 
 	return c
 }
 
-func (c *CrawlerBuilder) AddPhantomjsSupport() *CrawlerBuilder {
-	c.Crawler.Phantomjs = NewPhantomDownloader()
-	return c
-}
-
 func (c *CrawlerBuilder) AddParser(name string, p middleware.Parser) *CrawlerBuilder {
 	c.Crawler.Parsers[name] = p
 	return c

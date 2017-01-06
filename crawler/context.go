@@ -113,15 +113,15 @@ func NewDepthMiddleware() middleware.SpiderMiddleware {
 	}
 }
 
-func NewImagePipeline(dir string) middleware.ItemPipeline {
-	return &middleware.ImagePipeline{
-		Base:    middleware.NewBasePipeline("ImagePipeline"),
+func NewFilePipeline(dir string) middleware.ItemPipeline {
+	return &middleware.FilePipeline{
+		Base:    middleware.NewBasePipeline("FilePipeline"),
 		DirPath: dir,
 	}
 }
 
-func NewSaveImageMiddleware() middleware.SpiderMiddleware {
-	return &middleware.SaveImageMiddleware{
-		BaseMiddleware: middleware.NewBaseMiddleware("SaveImageMiddleware"),
+func NewSaveFileMiddleware() middleware.SpiderMiddleware {
+	return &middleware.SaveFileMiddleware{
+		BaseMiddleware: middleware.NewBaseMiddleware("SaveFileMiddleware"),
 	}
 }

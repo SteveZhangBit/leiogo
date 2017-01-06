@@ -92,8 +92,8 @@ func (c *CrawlerBuilder) AddItemPipelines(ps ...middleware.ItemPipeline) *Crawle
 	return c
 }
 
-func (c *CrawlerBuilder) AddImageDownloadSupport(path string) *CrawlerBuilder {
-	c.AddSpiderMiddlewares(NewSaveImageMiddleware())
-	c.AddItemPipelines(NewImagePipeline(path))
+func (c *CrawlerBuilder) AddFileDownloadSupport(path string) *CrawlerBuilder {
+	c.AddSpiderMiddlewares(NewSaveFileMiddleware())
+	c.AddItemPipelines(NewFilePipeline(path))
 	return c
 }

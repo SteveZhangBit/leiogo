@@ -1,11 +1,10 @@
 package middleware
 
 import (
-	"crypto/md5"
 	"errors"
 	"fmt"
 	"github.com/SteveZhangBit/leiogo"
-	"io"
+	"github.com/SteveZhangBit/leiogo/util"
 	"os"
 	"path"
 	"strings"
@@ -27,11 +26,11 @@ func (err *DropItemError) Error() string {
 	return err.Message
 }
 
-// ImagePipeline is simple pipeline to download static files, usually images.
+// FilePipeline is simple pipeline to download static files, usually images.
 // Since it is divided into two part, a pipeline and spider middleware,
 // so we have to add these two parts to the crawler to make it available,
 // or simply call AddImageDownloadSupport from the builder (See more in the crawler package).
-type ImagePipeline struct {
+type FilePipeline struct {
 	Base
 
 	// DirPath defines the directory where we want to store the downloaded files.
@@ -42,15 +41,15 @@ type ImagePipeline struct {
 	Yielder
 }
 
-func (p *ImagePipeline) Open(spider *leiogo.Spider) error {
+func (p *FilePipeline) Open(spider *leiogo.Spider) error {
 	p.Logger.Debug(spider.Name, "Init success with file directory: %s", p.DirPath)
 	return nil
 }
 
-// Because image pipeline is an item pipeline, so we can just yield a special item with the target file information.
+// Because file pipeline is an item pipeline, so we can just yield a special item with the target file information.
 // Add fileurls (required) and filepath (optional) to the items, and the pipeline will catch such items,
 // create new download requests for those urls.
-func (p *ImagePipeline) Process(item *leiogo.Item, spider *leiogo.Spider) error {
+func (p *FilePipeline) Process(item *leiogo.Item, spider *leiogo.Spider) error {
 	subpath := p.DirPath
 
 	// We allowed the files to store in a sub path under the DirPath.
@@ -74,7 +73,7 @@ func (p *ImagePipeline) Process(item *leiogo.Item, spider *leiogo.Spider) error 
 
 		// We won't use the original file name, instead we create a hashed name from its url.
 		// We are using MD5 here.
-		filepath := path.Join(subpath, hashURL(url)+ext)
+		filepath := path.Join(subpath, util.MD5Hash(url)+ext)
 
 		// Somtimes we will run the spider for several times, and there's no need to download
 		// the files which are already exists, therefore we will first check the existance of the file.
@@ -83,13 +82,13 @@ func (p *ImagePipeline) Process(item *leiogo.Item, spider *leiogo.Spider) error 
 			// We might directely download the images here, but that's not a good idea.
 			// We still want to take advantage of our previous work, like delay, offsite,
 			// so we decide to yield a new request here, and add type and filepath information in the meta.
-			// The SaveImageMiddleware will catch such requests and store the file to the
-			// target path. See SaveImageMiddleware for more information.
-			imgRequest := leiogo.NewRequest(url)
-			imgRequest.Meta["type"] = "file"
-			imgRequest.Meta["filepath"] = filepath
+			// The SaveFileMiddleware will catch such requests and store the file to the
+			// target path. See SaveFileMiddleware for more information.
+			fileRequest := leiogo.NewRequest(url)
+			fileRequest.Meta["type"] = "file"
+			fileRequest.Meta["filepath"] = filepath
 
-			if err := p.NewRequest(imgRequest, nil, spider); err != nil {
+			if err := p.NewRequest(fileRequest, nil, spider); err != nil {
 				p.Logger.Error(spider.Name, "Add img request error %s", err.Error())
 			}
 		}
@@ -97,18 +96,12 @@ func (p *ImagePipeline) Process(item *leiogo.Item, spider *leiogo.Spider) error 
 	return nil
 }
 
-func hashURL(input string) string {
-	h := md5.New()
-	io.WriteString(h, input)
-	return fmt.Sprintf("%x", h.Sum(nil))
-}
-
 // SaveimageMiddleware is a spider middlware to help download files yielded from the image pipeline.
-type SaveImageMiddleware struct {
+type SaveFileMiddleware struct {
 	BaseMiddleware
 }
 
-func (m *SaveImageMiddleware) ProcessResponse(res *leiogo.Response, req *leiogo.Request, spider *leiogo.Spider) error {
+func (m *SaveFileMiddleware) ProcessResponse(res *leiogo.Response, req *leiogo.Request, spider *leiogo.Spider) error {
 	typeName, typeOk := res.Meta["type"].(string)
 	filepath, pathOK := res.Meta["filepath"].(string)
 

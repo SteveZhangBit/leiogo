@@ -26,7 +26,7 @@ type StatusInfo struct {
 	Items int
 
 	// If user enable image download feature for the crawler, this field will show how many images have downloaded.
-	Images int
+	Files int
 
 	Reason string
 	Closed bool
@@ -153,7 +153,7 @@ func (c *Crawler) printStatus(spider *leiogo.Spider) {
 	c.Logger.Info(spider.Name, "%-10s - %d", "Crawled", c.StatusInfo.Crawled)
 	c.Logger.Info(spider.Name, "%-10s - %d", "Succeed", c.StatusInfo.Succeed)
 	c.Logger.Info(spider.Name, "%-10s - %d", "Items", c.StatusInfo.Items)
-	c.Logger.Info(spider.Name, "%-10s - %d", "Images", c.StatusInfo.Images)
+	c.Logger.Info(spider.Name, "%-10s - %d", "Files", c.StatusInfo.Files)
 	c.Logger.Info(spider.Name, "%-10s - %s", "Reason", c.StatusInfo.Reason)
 }
 
@@ -210,9 +210,9 @@ func (c *Crawler) crawl(req *leiogo.Request, spider *leiogo.Spider) {
 	// Pay attention that the download may fail, and as default the failed requests will be droped
 	// at the retry middleware (a download middleware). And if the download of a static file is success,
 	// it will be droped at the save image middleware (a spider middleware). So to record the number corretly,
-	// we have to add StatusInfo.Images between download middlewares and spider middlewares.
+	// we have to add StatusInfo.Files between download middlewares and spider middlewares.
 	if typeName, ok := req.Meta["type"]; ok && typeName.(string) == "file" {
-		c.StatusInfo.Images++
+		c.StatusInfo.Files++
 	}
 
 	for _, m := range c.SpiderMiddlewares {
@@ -221,7 +221,11 @@ func (c *Crawler) crawl(req *leiogo.Request, spider *leiogo.Spider) {
 		}
 	}
 
-	c.Parsers[req.ParserName](res, req, spider)
+	if parser, ok := c.Parsers[req.ParserName]; !ok {
+		c.Logger.Error(spider.Name, "No parser named %s", req.ParserName)
+	} else {
+		parser(res, req, spider)
+	}
 	c.StatusInfo.Succeed++
 }
 

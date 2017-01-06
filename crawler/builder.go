@@ -92,3 +92,8 @@ func (c *CrawlerBuilder) AddFileDownloadSupport(path string) *CrawlerBuilder {
 	c.AddItemPipelines(NewFilePipeline(path))
 	return c
 }
+
+func (c *CrawlerBuilder) AddVideoDownloadSupport(path string) *CrawlerBuilder {
+	c.AddItemPipelines(NewVideoPipeline(path))
+	return c
+}

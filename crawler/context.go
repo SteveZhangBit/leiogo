@@ -5,7 +5,6 @@ import (
 	"github.com/SteveZhangBit/leiogo"
 	"github.com/SteveZhangBit/leiogo/middleware"
 	"github.com/SteveZhangBit/log"
-	"time"
 )
 
 var (
@@ -14,7 +13,7 @@ var (
 	DownloadDelay      = 2.0
 	RetryEnabled       = true
 	RetryTimes         = 3
-	Timeout            = time.Duration(30)
+	Timeout            = 30
 	ConcurrentRequests = 32
 )
 
@@ -118,5 +117,12 @@ func NewFilePipeline(dir string) middleware.ItemPipeline {
 func NewSaveFileMiddleware() middleware.SpiderMiddleware {
 	return &middleware.SaveFileMiddleware{
 		BaseMiddleware: middleware.NewBaseMiddleware("SaveFileMiddleware"),
+	}
+}
+
+func NewVideoPipeline(dir string) middleware.ItemPipeline {
+	return &middleware.VideoPipeline{
+		Base:    middleware.NewBasePipeline("VideoPipeline"),
+		DirPath: dir,
 	}
 }

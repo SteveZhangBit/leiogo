@@ -203,8 +203,15 @@ func (m *RetryMiddleware) Open(spider *leiogo.Spider) error {
 func (m *RetryMiddleware) ProcessResponse(res *leiogo.Response, req *leiogo.Request, spider *leiogo.Spider) error {
 	// Retry will occur only if the Err field of the response is not nil.
 	// And it usually should be a connection error.
-	if res.Err != nil {
-
+	// Pay attention to an exception, we add video download feature to our downloader, and in order to
+	// stop its spread to the following middlewares, we set a DropTaskError to the Err field.
+	// In this situation, we don't need to retry.
+	switch res.Err.(type) {
+	case nil:
+		return nil
+	case *DropTaskError:
+		return res.Err
+	default:
 		// Test whether this request is retriable, see the function below.
 		if m.isRetriable(req) {
 			if err := m.NewRequest(req, nil, spider); err != nil {
@@ -213,7 +220,6 @@ func (m *RetryMiddleware) ProcessResponse(res *leiogo.Response, req *leiogo.Requ
 		}
 		return &DropTaskError{Message: res.Err.Error()}
 	}
-	return nil
 }
 
 // A request is retriable when RetryEnabled is set to true and the retry times of this request

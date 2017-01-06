@@ -46,10 +46,7 @@ func (p *FilePipeline) Open(spider *leiogo.Spider) error {
 	return nil
 }
 
-// Because file pipeline is an item pipeline, so we can just yield a special item with the target file information.
-// Add fileurls (required) and filepath (optional) to the items, and the pipeline will catch such items,
-// create new download requests for those urls.
-func (p *FilePipeline) Process(item *leiogo.Item, spider *leiogo.Spider) error {
+func (p *FilePipeline) createSubpath(item *leiogo.Item, spider *leiogo.Spider) string {
 	subpath := p.DirPath
 
 	// We allowed the files to store in a sub path under the DirPath.
@@ -64,6 +61,21 @@ func (p *FilePipeline) Process(item *leiogo.Item, spider *leiogo.Spider) error {
 	if err := os.MkdirAll(subpath, os.ModeDir); err != nil {
 		p.Logger.Error(spider.Name, "Create directory failed, %s", err.Error())
 	}
+
+	return subpath
+}
+
+// Because file pipeline is an item pipeline, so we can just yield a special item with the target file information.
+// Add fileurls (required) and filepath (optional) to the items, and the pipeline will catch such items,
+// create new download requests for those urls.
+func (p *FilePipeline) Process(item *leiogo.Item, spider *leiogo.Spider) error {
+	// We have to first make sure that the item has fileurls attribute,
+	// only such type of item will be treated as a file download item.
+	if _, ok := item.Data["fileurls"]; !ok {
+		return nil
+	}
+
+	subpath := p.createSubpath(item, spider)
 
 	// Traverse all the urls in the fileurls.
 	for _, url := range item.Data["fileurls"].([]string) {
@@ -121,6 +133,51 @@ func (m *SaveFileMiddleware) ProcessResponse(res *leiogo.Response, req *leiogo.R
 			}
 		} else {
 			return err
+		}
+	}
+
+	return nil
+}
+
+// We define VideoPipeline the same as the FilePipeline,
+// because most parts of them are the same
+type VideoPipeline FilePipeline
+
+func (v *VideoPipeline) Open(spider *leiogo.Spider) error {
+	v.Logger.Debug(spider.Name, "Init success with file directory: %s", v.DirPath)
+	return nil
+}
+
+// Most parts of this method are the same as the Filepipeline.
+
+func (v *VideoPipeline) Process(item *leiogo.Item, spider *leiogo.Spider) error {
+	// We have to first make sure that the item has videourl attribute,
+	// only such type of item will be treated as a video download item.
+	if _, ok := item.Data["videourl"]; !ok {
+		return nil
+	}
+
+	subpath := (*FilePipeline)(v).createSubpath(item, spider)
+
+	url := item.Data["videourl"].(string)
+	ext := item.Data["ext"].(string)
+
+	// We won't use the original file name, instead we create a hashed name from its url.
+	// We are using MD5 here.
+	filepath := path.Join(subpath, util.MD5Hash(url)+"."+ext)
+
+	// Somtimes we will run the spider for several times, and there's no need to download
+	// the files which are already exists, therefore we will first check the existance of the file.
+	if info, err := os.Stat(filepath); os.IsNotExist(err) || info.Size() < 512 {
+
+		// We do the same thing as we did in the file pipeline, we create a special request
+		// which will let downloader download this video file.
+		videoRequest := leiogo.NewRequest(url)
+		videoRequest.Meta["type"] = "video"
+		videoRequest.Meta["filepath"] = filepath
+
+		if err := v.NewRequest(videoRequest, nil, spider); err != nil {
+			v.Logger.Error(spider.Name, "Add video request error %s", err.Error())
 		}
 	}
 

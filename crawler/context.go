@@ -1,8 +1,8 @@
 package crawler
 
 import (
-	"github.com/SteveZhangBit/css/selector"
 	"github.com/SteveZhangBit/leiogo"
+	"github.com/SteveZhangBit/leiogo-css/selector"
 	"github.com/SteveZhangBit/leiogo/log"
 	"github.com/SteveZhangBit/leiogo/middleware"
 )

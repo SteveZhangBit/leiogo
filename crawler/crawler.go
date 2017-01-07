@@ -197,7 +197,15 @@ func (c *Crawler) crawl(req *leiogo.Request, spider *leiogo.Spider) {
 
 	// Check whether the request is a static file request.
 	if typeName, ok := req.Meta["type"]; ok && typeName.(string) == "file" {
-		c.StatusInfo.Files++
+
+		// In order to get the right count, we have the make sure that the
+		// the response shows that the download is completed, which means
+		// a DropTaskErr in the Err field.
+		switch res.Err.(type) {
+		case *middleware.DropTaskError:
+			c.StatusInfo.Files++
+		default:
+		}
 	}
 
 	for _, m := range c.DownloadMiddlewares {

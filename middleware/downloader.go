@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"errors"
+	"fmt"
 	"github.com/SteveZhangBit/leiogo"
 	"github.com/SteveZhangBit/log"
 	"io"
@@ -101,22 +102,27 @@ func (d *DefaultDownloader) writeFile(req *leiogo.Request, res *http.Response, l
 	if file, err := os.Create(filepath); err != nil {
 		leioRes.Err = err
 	} else {
-		defer file.Close()
+		// Create a counter to calculate the read content length.
+		// This will compare to the Content-Length in the response header.
+		var readLength int64 = 0
 
 		// Read the response body and write it to file.
 		buf := make([]byte, 4096)
 		for {
 			n, err := res.Body.Read(buf)
+
+			// Pay attention that the read method in io.Reader will return n > 0
+			// to indicate a successful read, and when it meets the file end, it will
+			// return a EOF error. So it's possible that the n > 0 and an EOF error.
 			if n > 0 {
 				if _, err := file.Write(buf[:n]); err != nil {
 					leioRes.Err = err
 					break
 				}
+				readLength += int64(n)
 			}
 
 			if err == io.EOF {
-				d.Logger.Info(spider.Name, "Saved %s to %s", req.URL, filepath)
-
 				// We want to drop this request after the download, so we create a drop task error here.
 				// By default, the first download middleware it will meet is retry middleware,
 				// and we have set an exception in the middleware, when it meets a drop task error,
@@ -127,6 +133,15 @@ func (d *DefaultDownloader) writeFile(req *leiogo.Request, res *http.Response, l
 				leioRes.Err = err
 				break
 			}
+		}
+		file.Close()
+
+		if readLength == res.ContentLength {
+			d.Logger.Info(spider.Name, "Saved %s to %s", req.URL, filepath)
+		} else {
+			leioRes.Err = errors.New(fmt.Sprintf("Content length doesn't match, need %d, get %d", res.ContentLength, readLength))
+			// Remove the imcompleted file
+			os.Remove(filepath)
 		}
 	}
 }

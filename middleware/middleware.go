@@ -2,7 +2,7 @@ package middleware
 
 import (
 	"github.com/SteveZhangBit/leiogo"
-	"github.com/SteveZhangBit/log"
+	"github.com/SteveZhangBit/leiogo/log"
 )
 
 type OpenClose interface {

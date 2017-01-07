@@ -2,8 +2,8 @@ package crawler
 
 import (
 	"github.com/SteveZhangBit/leiogo"
+	"github.com/SteveZhangBit/leiogo/log"
 	"github.com/SteveZhangBit/leiogo/middleware"
-	"github.com/SteveZhangBit/log"
 	"reflect"
 )
 

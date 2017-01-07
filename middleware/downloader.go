@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/SteveZhangBit/leiogo"
-	"github.com/SteveZhangBit/log"
+	"github.com/SteveZhangBit/leiogo/log"
 	"io"
 	"io/ioutil"
 	"net"

@@ -88,12 +88,6 @@ func (c *CrawlerBuilder) AddItemPipelines(ps ...middleware.ItemPipeline) *Crawle
 }
 
 func (c *CrawlerBuilder) AddFileDownloadSupport(path string) *CrawlerBuilder {
-	c.AddSpiderMiddlewares(NewSaveFileMiddleware())
 	c.AddItemPipelines(NewFilePipeline(path))
-	return c
-}
-
-func (c *CrawlerBuilder) AddVideoDownloadSupport(path string) *CrawlerBuilder {
-	c.AddItemPipelines(NewVideoPipeline(path))
 	return c
 }

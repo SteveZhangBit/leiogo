@@ -203,7 +203,7 @@ func (m *RetryMiddleware) Open(spider *leiogo.Spider) error {
 func (m *RetryMiddleware) ProcessResponse(res *leiogo.Response, req *leiogo.Request, spider *leiogo.Spider) error {
 	// Retry will occur only if the Err field of the response is not nil.
 	// And it usually should be a connection error.
-	// Pay attention to an exception, we add video download feature to our downloader, and in order to
+	// Pay attention to an exception, we add file download feature to our downloader, and in order to
 	// stop its spread to the following middlewares, we set a DropTaskError to the Err field.
 	// In this situation, we don't need to retry.
 	switch res.Err.(type) {

@@ -46,8 +46,8 @@ func (d *DefaultDownloader) Download(req *leiogo.Request, spider *leiogo.Spider)
 
 	if enable, ok := req.Meta["phantomjs"]; ok && enable.(bool) {
 		d.phantomjs(req, leioRes, spider)
-	} else if typename, ok := req.Meta["type"].(string); ok && typename == "video" {
-		d.videoDownload(req, leioRes, spider)
+	} else if typename, ok := req.Meta["type"].(string); ok && typename == "file" {
+		d.fileDownload(req, leioRes, spider)
 	} else {
 		d.httpDownload(req, leioRes, spider)
 	}
@@ -72,14 +72,13 @@ func (d *DefaultDownloader) httpDownload(req *leiogo.Request, leioRes *leiogo.Re
 	}
 }
 
-// We want the spider to have the ability to download video files.
+// We want the spider to have the ability to download files.
 // Generally, we can directly download it from its url, but there are some problems.
-// The first is that video files are usually large, and if we get the response and read it into
+// The first is that files are usually large, and if we get the response and read it into
 // another byte array, we need a lot of memory which is not a godd idea.
-// The second problem is that there's no need for video file to pass through the following middlewares.
-// This is similar to images, but images are usually small, we can bear the price.
-// But for video files, we want them to be writen into the target files as soon as possible.
-func (d *DefaultDownloader) videoDownload(req *leiogo.Request, leioRes *leiogo.Response, spider *leiogo.Spider) {
+// The second problem is that there's no need for the file to pass through the following middlewares,
+// we want them to be writen into the target files as soon as possible.
+func (d *DefaultDownloader) fileDownload(req *leiogo.Request, leioRes *leiogo.Response, spider *leiogo.Spider) {
 	if client, err := d.ConfigClient(); err == nil {
 		if res, err := client.Get(req.URL); err != nil {
 			leioRes.Err = err
@@ -88,17 +87,18 @@ func (d *DefaultDownloader) videoDownload(req *leiogo.Request, leioRes *leiogo.R
 			defer res.Body.Close()
 
 			leioRes.StatusCode = res.StatusCode
-			d.writeVideo(req, res, leioRes)
+			d.writeFile(req, res, leioRes, spider)
 		}
 	} else {
 		leioRes.Err = err
 	}
 }
 
-func (d *DefaultDownloader) writeVideo(req *leiogo.Request, res *http.Response, leioRes *leiogo.Response) {
-	// Create a file from its filepath. We've already verified the request to be a video request
-	// with type = video and filepath = 'path' in its meta
-	if file, err := os.Create(req.Meta["filepath"].(string)); err != nil {
+func (d *DefaultDownloader) writeFile(req *leiogo.Request, res *http.Response, leioRes *leiogo.Response, spider *leiogo.Spider) {
+	// Create a file from its filepath. We've already verified the request to be a file request
+	// with type = file and filepath = 'path' in its meta
+	filepath := req.Meta["filepath"].(string)
+	if file, err := os.Create(filepath); err != nil {
 		leioRes.Err = err
 	} else {
 		defer file.Close()
@@ -106,21 +106,26 @@ func (d *DefaultDownloader) writeVideo(req *leiogo.Request, res *http.Response, 
 		// Read the response body and write it to file.
 		buf := make([]byte, 4096)
 		for {
-			if _, err := res.Body.Read(buf); err != nil {
-				leioRes.Err = err
-				break
-			} else if err == io.EOF {
+			n, err := res.Body.Read(buf)
+			if n > 0 {
+				if _, err := file.Write(buf[:n]); err != nil {
+					leioRes.Err = err
+					break
+				}
+			}
+
+			if err == io.EOF {
+				d.Logger.Info(spider.Name, "Saved %s to %s", req.URL, filepath)
+
 				// We want to drop this request after the download, so we create a drop task error here.
 				// By default, the first download middleware it will meet is retry middleware,
 				// and we have set an exception in the middleware, when it meets a drop task error,
 				// it won't retry the request.
-				leioRes.Err = &DropTaskError{Message: "Video download success"}
+				leioRes.Err = &DropTaskError{Message: "File download success"}
 				break
-			} else {
-				if _, err := file.Write(buf); err != nil {
-					leioRes.Err = err
-					break
-				}
+			} else if err != nil {
+				leioRes.Err = err
+				break
 			}
 		}
 	}
@@ -173,16 +178,7 @@ type DefaultConfig struct {
 }
 
 func (c *DefaultConfig) ConfigClient() (*http.Client, error) {
-	transport := defaultTransport()
-
-	transport.DialContext = (&net.Dialer{
-		Timeout:   time.Duration(c.Timeout) * time.Second,
-		KeepAlive: 30 * time.Second,
-	}).DialContext
-
-	client := &http.Client{
-		Transport: transport,
-	}
+	client := &http.Client{Timeout: time.Duration(c.Timeout) * time.Second}
 	return client, nil
 }
 
@@ -196,15 +192,11 @@ func (c *ProxyConfig) ConfigClient() (*http.Client, error) {
 	if proxyURL, err := url.Parse(c.ProxyURL); err == nil {
 		transport := defaultTransport()
 
-		transport.DialContext = (&net.Dialer{
-			Timeout:   time.Duration(c.Timeout) * time.Second,
-			KeepAlive: 30 * time.Second,
-		}).DialContext
-
 		transport.Proxy = http.ProxyURL(proxyURL)
 
 		client := &http.Client{
 			Transport: transport,
+			Timeout:   time.Duration(c.Timeout) * time.Second,
 		}
 
 		return client, nil

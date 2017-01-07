@@ -113,16 +113,3 @@ func NewFilePipeline(dir string) middleware.ItemPipeline {
 		DirPath: dir,
 	}
 }
-
-func NewSaveFileMiddleware() middleware.SpiderMiddleware {
-	return &middleware.SaveFileMiddleware{
-		BaseMiddleware: middleware.NewBaseMiddleware("SaveFileMiddleware"),
-	}
-}
-
-func NewVideoPipeline(dir string) middleware.ItemPipeline {
-	return &middleware.VideoPipeline{
-		Base:    middleware.NewBasePipeline("VideoPipeline"),
-		DirPath: dir,
-	}
-}

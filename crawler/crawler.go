@@ -102,19 +102,22 @@ func (c *Crawler) Crawl(spider *leiogo.Spider) {
 		c.Logger.Info(spider.Name, "Get user interrupt signal, waiting the running requests to complete")
 	}()
 
-	c.Logger.Info(spider.Name, "Adding start URLs")
-	for _, req := range spider.StartURLs {
-		c.addRequest(req)
-	}
-
 	// If there isn't any start urls, then directly close the spider.
 	// Otherwise, the program will wait forever.
 	if len(spider.StartURLs) != 0 {
+
 		// Wait for all the requests to complete.
+		// This should be invoked before any addRequest,
+		// otherwise the program will block forever.
 		go func() {
 			c.count.Wait()
 			close(c.requests)
 		}()
+
+		c.Logger.Info(spider.Name, "Adding start URLs")
+		for _, req := range spider.StartURLs {
+			c.addRequest(req)
+		}
 
 		for req := range c.requests {
 			// In order to controll the concurrent requests, we use a special channel.
@@ -192,19 +195,15 @@ func (c *Crawler) crawl(req *leiogo.Request, spider *leiogo.Spider) {
 	res := c.Downloader.Download(req, spider)
 	c.StatusInfo.Crawled++
 
+	// Check whether the request is a static file request.
+	if typeName, ok := req.Meta["type"]; ok && typeName.(string) == "file" {
+		c.StatusInfo.Files++
+	}
+
 	for _, m := range c.DownloadMiddlewares {
 		if ok := c.handleErr(m.ProcessResponse(res, req, spider), req, m, spider); !ok {
 			return
 		}
-	}
-
-	// Check whether the request is a static file request.
-	// Pay attention that the download may fail, and as default the failed requests will be droped
-	// at the retry middleware (a download middleware). And if the download of a static file is success,
-	// it will be droped at the save image middleware (a spider middleware). So to record the number corretly,
-	// we have to add StatusInfo.Files between download middlewares and spider middlewares.
-	if typeName, ok := req.Meta["type"]; ok && typeName.(string) == "file" {
-		c.StatusInfo.Files++
 	}
 
 	for _, m := range c.SpiderMiddlewares {

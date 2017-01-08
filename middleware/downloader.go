@@ -47,7 +47,7 @@ func (d *DefaultDownloader) Download(req *leiogo.Request, spider *leiogo.Spider)
 
 	if enable, ok := req.Meta["phantomjs"]; ok && enable.(bool) {
 		d.phantomjs(req, leioRes, spider)
-	} else if typename, ok := req.Meta["type"].(string); ok && typename == "file" {
+	} else if typename, ok := req.Meta["__type__"].(string); ok && typename == "file" {
 		d.fileDownload(req, leioRes, spider)
 	} else {
 		d.httpDownload(req, leioRes, spider)
@@ -98,7 +98,7 @@ func (d *DefaultDownloader) fileDownload(req *leiogo.Request, leioRes *leiogo.Re
 func (d *DefaultDownloader) writeFile(req *leiogo.Request, res *http.Response, leioRes *leiogo.Response, spider *leiogo.Spider) {
 	// Create a file from its filepath. We've already verified the request to be a file request
 	// with type = file and filepath = 'path' in its meta
-	filepath := req.Meta["filepath"].(string)
+	filepath := req.Meta["__filepath__"].(string)
 	if file, err := os.Create(filepath); err != nil {
 		leioRes.Err = err
 	} else {

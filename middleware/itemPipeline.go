@@ -97,8 +97,8 @@ func (p *FilePipeline) Process(item *leiogo.Item, spider *leiogo.Spider) error {
 			// The Downloader will catch such requests and store the file to the
 			// target path. See DefaultDownloader for more information.
 			fileRequest := leiogo.NewRequest(url)
-			fileRequest.Meta["type"] = "file"
-			fileRequest.Meta["filepath"] = filepath
+			fileRequest.Meta["__type__"] = "file"
+			fileRequest.Meta["__filepath__"] = filepath
 
 			if err := p.NewRequest(fileRequest, nil, spider); err != nil {
 				p.Logger.Error(spider.Name, "Add file request error %s", err.Error())

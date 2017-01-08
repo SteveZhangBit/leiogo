@@ -53,6 +53,10 @@ func (c *CrawlerBuilder) addYielder(m interface{}) {
 	}
 }
 
+func (c *CrawlerBuilder) DefaultParser() DefaultParser {
+	return DefaultParser{Crawler: c.Crawler}
+}
+
 func (c *CrawlerBuilder) AddDownloadMiddlewares(ms ...middleware.DownloadMiddleware) *CrawlerBuilder {
 	for _, m := range ms {
 		c.addYielder(m)

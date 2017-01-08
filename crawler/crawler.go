@@ -196,7 +196,7 @@ func (c *Crawler) crawl(req *leiogo.Request, spider *leiogo.Spider) {
 	c.StatusInfo.Crawled++
 
 	// Check whether the request is a static file request.
-	if typeName, ok := req.Meta["type"]; ok && typeName.(string) == "file" {
+	if typeName, ok := req.Meta["__type__"]; ok && typeName.(string) == "file" {
 
 		// In order to get the right count, we have the make sure that the
 		// the response shows that the download is completed, which means

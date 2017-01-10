@@ -20,6 +20,9 @@ import (
 	"net/url"
 )
 
+// user defined imports
+%s
+
 func init() {
 // config crawler
 %s
@@ -59,6 +62,7 @@ func (p *Parser) %s(res *leiogo.Response, req *leiogo.Request, spider *leiogo.Sp
 u, _ := url.Parse(req.URL)
 
 // user defined variables
+%s
 
 // user defined patterns
 patterns := map[string]crawler.PatternFunc{}
@@ -77,6 +81,7 @@ patterns["%s"] = func(el *selector.Elements) interface{} {
 `
 
 var (
+	CodeImports   = ""
 	CodeFunctions = ""
 	CodeCrawler   = ""
 	CodeLogger    = ""
@@ -100,37 +105,61 @@ func main() {
 			fmt.Println("JSON decode error: ", err)
 		} else {
 			// We define several different keywords.
-			// "crawler" indicates the crawler package. We have defined some
-			// const in the package, like DepthLimit, RetryTimes.
-			// "log" indicates the logger package, users can change the loglevel
-			// among "Fatal", "Error", "Info", "Debug", "Trace".
-			// "spider" indicates the spider which the user wants to create, it should
-			// be a json object including Name, StartURLs and AllowedDomains.
-			// "builder" is used to help us config the crawler components. The key should
-			// be the function name like SetDownloader, and the value is the demanding parameters.
-			// The rest will all be treated as parsers, and there should be at least one parser named "parser"
+
 			for key, val := range dic {
 				switch key {
+
+				// "imports" indicates the user defined imports
+				case "imports":
+					ConfigImports(val.([]interface{}))
+
+				// "crawler" indicates the crawler package. We have defined some
+				// const in the package, like DepthLimit, RetryTimes.
 				case "crawler":
 					ConfigCrawler(val.(map[string]interface{}))
+
+				// "log" indicates the logger package, users can change the loglevel
+				// among "Fatal", "Error", "Info", "Debug", "Trace".
 				case "log":
 					ConfigLogger(val.(string))
+
+				// "spider" indicates the spider which the user wants to create, it should
+				// be a json object including Name, StartURLs and AllowedDomains.
 				case "spider":
 					ConfigSpider(val.(map[string]interface{}))
+
+				// "builder" is used to help us config the crawler components. The key should
+				// be the function name like SetDownloader, and the value is the demanding parameters.
 				case "builder":
 					ConfigBuilder(val.(map[string]interface{}))
+
+				// The rest will all be treated as parsers, and there should be at least one parser named "parser"
 				default:
 					ConfigParser(key, val.(map[string]interface{}))
 				}
 			}
 
 			target, _ := os.Create(os.Args[1] + ".go")
-			fmt.Fprintf(target, MainTemplate, CodeCrawler, CodeLogger, CodeFunctions, CodeSpider, CodeBuilder, CodeParser)
+			fmt.Fprintf(target, MainTemplate,
+				CodeImports,
+				CodeCrawler,
+				CodeLogger,
+				CodeFunctions,
+				CodeSpider,
+				CodeBuilder,
+				CodeParser)
 			target.Close()
 
 			// Use gofmt to format the code, make it more readable.
 			exec.Command("go", "fmt", os.Args[1]+".go").Start()
+			exec.Command("goimports", "-w", os.Args[1]+".go").Start()
 		}
+	}
+}
+
+func ConfigImports(a []interface{}) {
+	for _, val := range a {
+		CodeImports += fmt.Sprintf("import \"%s\"", val.(string))
 	}
 }
 
@@ -181,11 +210,23 @@ func ConfigParser(name string, dic map[string]interface{}) {
 
 	// Generate functions to the Parser type
 	patterns := ""
+	vars := ""
 	for key, val := range dic {
-		patterns += fmt.Sprintf(PatternFuncTemplate, key, createPatternFunc(val.(map[string]interface{})))
+		if key == "vars" {
+			vars = createPatternVars(val.(map[string]interface{}))
+		} else {
+			patterns += fmt.Sprintf(PatternFuncTemplate, key, createPatternFunc(val.(map[string]interface{})))
+		}
 	}
 
-	CodeFunctions += fmt.Sprintf(ParseFuncTemplate, funcName, patterns)
+	CodeFunctions += fmt.Sprintf(ParseFuncTemplate, funcName, vars, patterns)
+}
+
+func createPatternVars(dic map[string]interface{}) (code string) {
+	for key, val := range dic {
+		code += fmt.Sprintf("%s := %v\n", key, eval(val))
+	}
+	return
 }
 
 func createPatternFunc(dic map[string]interface{}) (code string) {
@@ -214,6 +255,10 @@ func createRequest(req map[string]interface{}) (code string) {
 		default:
 			code += fmt.Sprintf("%s: %v, ", key, eval(val))
 		}
+	}
+	// If user doesn't provide the ParserName, we should always set it to 'parser'
+	if _, ok := req["ParserName"]; !ok {
+		code += "ParserName: \"parser\""
 	}
 	code += "}"
 	return

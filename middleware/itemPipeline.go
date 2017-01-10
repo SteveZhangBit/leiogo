@@ -108,3 +108,33 @@ func (p *FilePipeline) Process(item *leiogo.Item, spider *leiogo.Spider) error {
 	}
 	return nil
 }
+
+// JSON pipeline will write all the items into a file.
+// This can help you debug.
+type JSONPipeline struct {
+	Base
+	file *os.File
+}
+
+func (j *JSONPipeline) Process(item *leiogo.Item, spider *leiogo.Spider) error {
+	_, err := j.file.WriteString(item.String() + "\n")
+	return err
+}
+
+func (j *JSONPipeline) Open(spider *leiogo.Spider) error {
+	var err error
+	if j.file, err = os.Create("items.json"); err != nil {
+		j.Logger.Error(spider.Name, "Create file items.json fail, %s", err)
+	} else {
+		j.Logger.Info(spider.Name, "Create file items.json")
+	}
+	return err
+}
+
+func (j *JSONPipeline) Close(reason string, spider *leiogo.Spider) error {
+	var err error
+	if err = j.file.Close(); err != nil {
+		j.Logger.Error(spider.Name, "Close file items.json fail, %s", err)
+	}
+	return err
+}

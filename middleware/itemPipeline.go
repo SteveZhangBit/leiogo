@@ -1,11 +1,12 @@
 package middleware
 
 import (
-	"github.com/SteveZhangBit/leiogo"
-	"github.com/SteveZhangBit/leiogo/util"
 	"os"
 	"path"
 	"strings"
+
+	"github.com/SteveZhangBit/leiogo"
+	"github.com/SteveZhangBit/leiogo/util"
 )
 
 type ItemPipeline interface {

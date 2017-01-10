@@ -3,8 +3,6 @@ package middleware
 import (
 	"errors"
 	"fmt"
-	"github.com/SteveZhangBit/leiogo"
-	"github.com/SteveZhangBit/leiogo/log"
 	"io"
 	"io/ioutil"
 	"net"
@@ -13,6 +11,9 @@ import (
 	"os"
 	"os/exec"
 	"time"
+
+	"github.com/SteveZhangBit/leiogo"
+	"github.com/SteveZhangBit/leiogo/log"
 )
 
 type Downloader interface {
@@ -37,7 +38,7 @@ type DefaultDownloader struct {
 }
 
 func (d *DefaultDownloader) Download(req *leiogo.Request, spider *leiogo.Spider) (leioRes *leiogo.Response) {
-	leioRes = &leiogo.Response{Meta: req.Meta}
+	leioRes = leiogo.NewResponse(req)
 
 	if retry, ok := req.Meta["retry"].(int); ok {
 		d.Logger.Info(spider.Name, "Retrying %s for %d times", req.URL, retry)

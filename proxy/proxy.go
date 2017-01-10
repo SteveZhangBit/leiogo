@@ -2,10 +2,11 @@ package proxy
 
 import (
 	"fmt"
-	"github.com/SteveZhangBit/leiogo"
-	"github.com/SteveZhangBit/leiogo/middleware"
 	"net"
 	"net/rpc"
+
+	"github.com/SteveZhangBit/leiogo"
+	"github.com/SteveZhangBit/leiogo/middleware"
 )
 
 func Dial(url string, call func(client *rpc.Client) error) error {

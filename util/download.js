@@ -27,8 +27,7 @@ page.open(address, function(status) {
         count = page.framesCount + 1;
 
     for (var i = 0; i < count; i++) {
-      // console.log(page.frameName);
-      html += '\n\n' + page.frameContent + '\n\n';
+      html += page.frameContent + '\n\n\n';
       page.switchToMainFrame();
       page.switchToFrame(i);
     }
@@ -38,14 +37,9 @@ page.open(address, function(status) {
       Body: html
     };
 
-    // var file = fs.open('./result.html', 'w');
-    // file.write(html);
-    // file.close();
-
-    system.stdout.write(JSON.stringify(leioRes));
+    system.stdout.write(html);
     phantom.exit();
   } else {
-    console.log(JSON.stringify({Err: 'Phantomjs Error', Body: ''}));
     phantom.exit();
   }
 });

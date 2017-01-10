@@ -2,12 +2,13 @@ package middleware
 
 import (
 	"fmt"
-	"github.com/SteveZhangBit/leiogo"
 	"math/rand"
 	"net/url"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/SteveZhangBit/leiogo"
 )
 
 // When a middleware wants to drop the current task, return this type of error.
@@ -236,4 +237,26 @@ func (m *RetryMiddleware) isRetriable(req *leiogo.Request) bool {
 		}
 	}
 	return false
+}
+
+// ReferenceURL middleware is a spider middleware. In some cases, we may the url of a sub request
+// may be a reference request, like /sub/url, or like ../parent/url, but we need to get the full path.
+// However, we do not need to create the path by ourselves, since we can generate the path from the
+// parent path, therefore, we can create a middleware to handle it.
+type ReferenceURLMiddleware struct {
+	BaseMiddleware
+}
+
+func (r *ReferenceURLMiddleware) ProcessNewRequest(req *leiogo.Request, parentRes *leiogo.Response, spider *leiogo.Spider) error {
+	// We first check that if the request url is a relative url.
+	if !strings.HasPrefix(req.URL, "http") {
+		base, _ := url.Parse(parentRes.URL)
+		if ref, err := url.Parse(req.URL); err != nil {
+			return err
+		} else {
+			req.URL = base.ResolveReference(ref).String()
+			r.Logger.Debug(spider.Name, "Resolve reference from %s to %s", ref.String(), req.URL)
+		}
+	}
+	return nil
 }

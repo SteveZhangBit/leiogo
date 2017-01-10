@@ -1,10 +1,11 @@
 package crawler
 
 import (
+	"reflect"
+
 	"github.com/SteveZhangBit/leiogo"
 	"github.com/SteveZhangBit/leiogo/log"
 	"github.com/SteveZhangBit/leiogo/middleware"
-	"reflect"
 )
 
 type CrawlerBuilder struct {
@@ -39,6 +40,7 @@ func DefaultCrawlerBuilder() *CrawlerBuilder {
 	)
 	c.AddSpiderMiddlewares(
 		NewHttpErrorMiddleware(),
+		NewReferenceURLMiddleware(),
 		NewDepthMiddleware(),
 	)
 	return c

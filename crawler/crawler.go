@@ -1,13 +1,14 @@
 package crawler
 
 import (
+	"os"
+	"os/signal"
+	"time"
+
 	"github.com/SteveZhangBit/leiogo"
 	"github.com/SteveZhangBit/leiogo/log"
 	"github.com/SteveZhangBit/leiogo/middleware"
 	"github.com/SteveZhangBit/leiogo/util"
-	"os"
-	"os/signal"
-	"time"
 )
 
 type StatusInfo struct {

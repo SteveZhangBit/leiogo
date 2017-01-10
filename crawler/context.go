@@ -107,6 +107,12 @@ func NewDepthMiddleware() middleware.SpiderMiddleware {
 	}
 }
 
+func NewReferenceURLMiddleware() middleware.SpiderMiddleware {
+	return &middleware.ReferenceURLMiddleware{
+		BaseMiddleware: middleware.NewBaseMiddleware("ReferenceURLMiddleware"),
+	}
+}
+
 func NewFilePipeline(dir string) middleware.ItemPipeline {
 	return &middleware.FilePipeline{
 		Base:    middleware.NewBasePipeline("FilePipeline"),

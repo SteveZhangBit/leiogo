@@ -15,6 +15,7 @@ var (
 	RetryTimes         = 3
 	Timeout            = 30
 	ConcurrentRequests = 32
+	UserAgent          = ""
 )
 
 type PatternFunc func(el *selector.Elements) interface{}
@@ -59,15 +60,15 @@ func NewDownloader() middleware.Downloader {
 	return &middleware.DefaultDownloader{
 		Logger:       log.New("Downloader"),
 		ClientConfig: &middleware.DefaultConfig{Timeout: Timeout},
+		UserAgent:    UserAgent,
 	}
 }
 
 func NewProxyDownloader(url string) middleware.Downloader {
 	return &middleware.DefaultDownloader{
-		Logger: log.New("ProxyDownloader"),
-		ClientConfig: &middleware.ProxyConfig{
-			Timeout:  Timeout,
-			ProxyURL: url},
+		Logger:       log.New("ProxyDownloader"),
+		ClientConfig: &middleware.ProxyConfig{Timeout: Timeout, ProxyURL: url},
+		UserAgent:    UserAgent,
 	}
 }
 

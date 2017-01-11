@@ -34,6 +34,9 @@ type DefaultDownloader struct {
 	// See the implemention of DefaultConfig and ProxyConfig for more information.
 	ClientConfig
 
+	// We allowe users to set their custom User-Agent
+	UserAgent string
+
 	Logger log.Logger
 }
 
@@ -57,20 +60,33 @@ func (d *DefaultDownloader) Download(req *leiogo.Request, spider *leiogo.Spider)
 	return
 }
 
+func (d *DefaultDownloader) getResponse(req *leiogo.Request) (*http.Response, error) {
+	client, err := d.ConfigClient()
+	if err != nil {
+		return nil, err
+	}
+
+	if getReq, err := http.NewRequest("GET", req.URL, nil); err != nil {
+		return nil, err
+	} else {
+		if d.UserAgent != "" {
+			getReq.Header.Set("User-Agent", d.UserAgent)
+		}
+		return client.Do(getReq)
+	}
+}
+
 // The traditional way the handle http requests in golang.
 func (d *DefaultDownloader) httpDownload(req *leiogo.Request, leioRes *leiogo.Response, spider *leiogo.Spider) {
-	if client, err := d.ConfigClient(); err == nil {
-		if res, err := client.Get(req.URL); err != nil {
-			leioRes.Err = err
-		} else {
-			// With the help of golang's defer feature, remember to close the response body.
-			defer res.Body.Close()
+	res, err := d.getResponse(req)
+	// With the help of golang's defer feature, remember to close the response body.
+	defer res.Body.Close()
 
-			leioRes.StatusCode = res.StatusCode
-			leioRes.Body, leioRes.Err = ioutil.ReadAll(res.Body)
-		}
-	} else {
+	if err != nil {
 		leioRes.Err = err
+	} else {
+		leioRes.StatusCode = res.StatusCode
+		leioRes.Body, leioRes.Err = ioutil.ReadAll(res.Body)
 	}
 }
 
@@ -81,18 +97,15 @@ func (d *DefaultDownloader) httpDownload(req *leiogo.Request, leioRes *leiogo.Re
 // The second problem is that there's no need for the file to pass through the following middlewares,
 // we want them to be writen into the target files as soon as possible.
 func (d *DefaultDownloader) fileDownload(req *leiogo.Request, leioRes *leiogo.Response, spider *leiogo.Spider) {
-	if client, err := d.ConfigClient(); err == nil {
-		if res, err := client.Get(req.URL); err != nil {
-			leioRes.Err = err
-		} else {
-			// With the help of golang's defer feature, remember to close the response body.
-			defer res.Body.Close()
+	res, err := d.getResponse(req)
+	// With the help of golang's defer feature, remember to close the response body.
+	defer res.Body.Close()
 
-			leioRes.StatusCode = res.StatusCode
-			d.writeFile(req, res, leioRes, spider)
-		}
-	} else {
+	if err != nil {
 		leioRes.Err = err
+	} else {
+		leioRes.StatusCode = res.StatusCode
+		d.writeFile(req, res, leioRes, spider)
 	}
 }
 
@@ -174,20 +187,6 @@ func (d *DefaultDownloader) phantomjs(req *leiogo.Request, leioRes *leiogo.Respo
 	}
 }
 
-func defaultTransport() *http.Transport {
-	return &http.Transport{
-		Proxy: http.ProxyFromEnvironment,
-		DialContext: (&net.Dialer{
-			Timeout:   30 * time.Second,
-			KeepAlive: 30 * time.Second,
-		}).DialContext,
-		MaxIdleConns:          100,
-		IdleConnTimeout:       90 * time.Second,
-		TLSHandshakeTimeout:   10 * time.Second,
-		ExpectContinueTimeout: 1 * time.Second,
-	}
-}
-
 // We only config the timeout for the default config.
 type DefaultConfig struct {
 	Timeout int
@@ -202,6 +201,20 @@ func (c *DefaultConfig) ConfigClient() (*http.Client, error) {
 type ProxyConfig struct {
 	Timeout  int
 	ProxyURL string
+}
+
+func defaultTransport() *http.Transport {
+	return &http.Transport{
+		Proxy: http.ProxyFromEnvironment,
+		DialContext: (&net.Dialer{
+			Timeout:   30 * time.Second,
+			KeepAlive: 30 * time.Second,
+		}).DialContext,
+		MaxIdleConns:          100,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+	}
 }
 
 func (c *ProxyConfig) ConfigClient() (*http.Client, error) {

@@ -258,7 +258,11 @@ func createRequest(req map[string]interface{}) (code string) {
 	}
 	// If user doesn't provide the ParserName, we should always set it to 'parser'
 	if _, ok := req["ParserName"]; !ok {
-		code += "ParserName: \"parser\""
+		code += "ParserName: \"parser\", "
+	}
+	// If user doesn't provide the Meta, we should create an empty one.
+	if _, ok := req["Meta"]; !ok {
+		code += "Meta: leiogo.Dict{}"
 	}
 	code += "}"
 	return

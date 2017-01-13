@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"regexp"
 	"strings"
 )
 
@@ -58,9 +59,6 @@ builder.Build().Crawl(spider)
 
 const ParseFuncTemplate = `
 func (p *Parser) %s(res *leiogo.Response, req *leiogo.Request, spider *leiogo.Spider) {
-// useful help variables
-u, _ := url.Parse(req.URL)
-
 // user defined variables
 %s
 
@@ -74,9 +72,13 @@ p.RunPattern(patterns, res, spider)
 `
 
 const PatternFuncTemplate = `
-patterns["%s"] = func(el *selector.Elements) interface{} {
-// return item(s) or request(s) here
+patterns["%s"] = func(el *selector.Elements) []interface{} {
+var products []interface{}
+
+// add item(s) and/or request(s) here
 %s
+
+return products
 }
 `
 
@@ -159,7 +161,7 @@ func main() {
 
 func ConfigImports(a []interface{}) {
 	for _, val := range a {
-		CodeImports += fmt.Sprintf("import \"%s\"", val.(string))
+		CodeImports += fmt.Sprintf("import \"%s\"\n", val.(string))
 	}
 }
 
@@ -213,7 +215,7 @@ func ConfigParser(name string, dic map[string]interface{}) {
 	vars := ""
 	for key, val := range dic {
 		if key == "vars" {
-			vars = createPatternVars(val.(map[string]interface{}))
+			vars = createPatternVars(val.([]interface{}))
 		} else {
 			patterns += fmt.Sprintf(PatternFuncTemplate, key, createPatternFunc(val.(map[string]interface{})))
 		}
@@ -222,9 +224,11 @@ func ConfigParser(name string, dic map[string]interface{}) {
 	CodeFunctions += fmt.Sprintf(ParseFuncTemplate, funcName, vars, patterns)
 }
 
-func createPatternVars(dic map[string]interface{}) (code string) {
-	for key, val := range dic {
-		code += fmt.Sprintf("%s := %v\n", key, eval(val))
+func createPatternVars(a []interface{}) (code string) {
+	for _, dic := range a {
+		for name, val := range dic.(map[string]interface{}) {
+			code += fmt.Sprintf("%s := %v\n", name, eval(val))
+		}
 	}
 	return
 }
@@ -232,10 +236,34 @@ func createPatternVars(dic map[string]interface{}) (code string) {
 func createPatternFunc(dic map[string]interface{}) (code string) {
 	for key, val := range dic {
 		switch key {
+
+		case "vars":
+			code = createPatternVars(val.([]interface{})) + code
+
 		case "item":
-			code += "return " + createItem(val.(map[string]interface{}))
+			code += fmt.Sprintf("products = append(products, %s)\n", createItem(val.(map[string]interface{})))
+
+		case "items":
+			for _, item := range val.([]interface{}) {
+				code += fmt.Sprintf("products = append(products, %s)\n", createItem(item.(map[string]interface{})))
+			}
+
 		case "request":
-			code += "return " + createRequest(val.(map[string]interface{}))
+			code += fmt.Sprintf("products = append(products, %s)\n", createRequest(val.(map[string]interface{})))
+
+		case "requests":
+			for _, req := range val.([]interface{}) {
+				code += fmt.Sprintf("products = append(products, %s)\n", createRequest(req.(map[string]interface{})))
+			}
+
+		default:
+			// for loop pattern
+			if regexp.MustCompile(`^for \w+, ?\w+ in .+`).MatchString(key) {
+				code += fmt.Sprintf("%s {\n%s}", strings.Replace(key, "in", ":= range", 1),
+					createPatternFunc(val.(map[string]interface{})))
+			} else {
+				panic(fmt.Sprintf("Unknown keywors at %s, %v", key, val))
+			}
 		}
 	}
 	return

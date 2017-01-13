@@ -78,13 +78,11 @@ func (d *DefaultDownloader) getResponse(req *leiogo.Request) (*http.Response, er
 
 // The traditional way the handle http requests in golang.
 func (d *DefaultDownloader) httpDownload(req *leiogo.Request, leioRes *leiogo.Response, spider *leiogo.Spider) {
-	res, err := d.getResponse(req)
-	// With the help of golang's defer feature, remember to close the response body.
-	defer res.Body.Close()
-
-	if err != nil {
+	if res, err := d.getResponse(req); err != nil {
 		leioRes.Err = err
 	} else {
+		// With the help of golang's defer feature, remember to close the response body.
+		defer res.Body.Close()
 		leioRes.StatusCode = res.StatusCode
 		leioRes.Body, leioRes.Err = ioutil.ReadAll(res.Body)
 	}
@@ -97,13 +95,11 @@ func (d *DefaultDownloader) httpDownload(req *leiogo.Request, leioRes *leiogo.Re
 // The second problem is that there's no need for the file to pass through the following middlewares,
 // we want them to be writen into the target files as soon as possible.
 func (d *DefaultDownloader) fileDownload(req *leiogo.Request, leioRes *leiogo.Response, spider *leiogo.Spider) {
-	res, err := d.getResponse(req)
-	// With the help of golang's defer feature, remember to close the response body.
-	defer res.Body.Close()
-
-	if err != nil {
+	if res, err := d.getResponse(req); err != nil {
 		leioRes.Err = err
 	} else {
+		// With the help of golang's defer feature, remember to close the response body.
+		defer res.Body.Close()
 		leioRes.StatusCode = res.StatusCode
 		d.writeFile(req, res, leioRes, spider)
 	}

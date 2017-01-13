@@ -4,6 +4,7 @@ import (
 	"crypto/md5"
 	"fmt"
 	"io"
+	"net/url"
 	"time"
 )
 
@@ -28,4 +29,11 @@ func FormatDuration(delta time.Duration) string {
 	} else {
 		return fmt.Sprintf("%dms", millis)
 	}
+}
+
+func GetHost(raw string) string {
+	if u, err := url.Parse(raw); err == nil {
+		return u.Host
+	}
+	return ""
 }

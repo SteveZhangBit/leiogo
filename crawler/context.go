@@ -18,7 +18,7 @@ var (
 	UserAgent          = ""
 )
 
-type PatternFunc func(el *selector.Elements) interface{}
+type PatternFunc func(el *selector.Elements) []interface{}
 
 type DefaultParser struct {
 	*Crawler
@@ -26,7 +26,7 @@ type DefaultParser struct {
 
 func (d *DefaultParser) RunPattern(patterns map[string]PatternFunc, res *leiogo.Response, spider *leiogo.Spider) {
 	doc := selector.Parse(string(res.Body))
-	for key, val := range patterns {
+	for key, f := range patterns {
 		var el *selector.Elements
 
 		// Sometimes, we can define an empty pattern, meaning that it should not do any css selection
@@ -37,21 +37,15 @@ func (d *DefaultParser) RunPattern(patterns map[string]PatternFunc, res *leiogo.
 			}
 		}
 
-		switch x := val(el).(type) {
-		case *leiogo.Item:
-			d.NewItem(x, spider)
-		case []*leiogo.Item:
-			for _, item := range x {
-				d.NewItem(item, spider)
+		for _, val := range f(el) {
+			switch x := val.(type) {
+			case *leiogo.Item:
+				d.NewItem(x, spider)
+			case *leiogo.Request:
+				d.NewRequest(x, res, spider)
+			default:
+				d.Logger.Error(spider.Name, "Unknown return type for patter function %T", x)
 			}
-		case *leiogo.Request:
-			d.NewRequest(x, res, spider)
-		case []*leiogo.Request:
-			for _, req := range x {
-				d.NewRequest(req, res, spider)
-			}
-		default:
-			d.Logger.Error(spider.Name, "Unknown return type for patter function %T", x)
 		}
 	}
 }

@@ -17,7 +17,6 @@ import (
 	"github.com/SteveZhangBit/leiogo"
 	"github.com/SteveZhangBit/leiogo-css/selector"
 	"github.com/SteveZhangBit/leiogo/crawler"
-	"github.com/SteveZhangBit/leiogo/log"
 	"net/url"
 )
 
@@ -173,6 +172,7 @@ func ConfigCrawler(dic map[string]interface{}) {
 
 func ConfigLogger(level string) {
 	CodeLogger = fmt.Sprintf("log.LogLevel = log.%s", level)
+	CodeImports += "import \"github.com/SteveZhangBit/leiogo/log\"\n"
 }
 
 func ConfigSpider(dic map[string]interface{}) {
@@ -278,8 +278,18 @@ func createRequest(req map[string]interface{}) (code string) {
 	code = "&leiogo.Request{"
 	for key, val := range req {
 		switch key {
+
 		case "Meta":
-			code += fmt.Sprintf("Meta: leiogo.Dict%s, ", eval(val))
+			// There are two ways to set the Meta field.
+			switch val.(type) {
+			// The first one is to create a json object/
+			case map[string]interface{}:
+				code += fmt.Sprintf("Meta: leiogo.Dict%s, ", eval(val))
+			// The second way is to create by a code string ($...$)
+			case string:
+				code += fmt.Sprintf("Meta: %s, ", eval(val))
+			}
+
 		default:
 			code += fmt.Sprintf("%s: %v, ", key, eval(val))
 		}

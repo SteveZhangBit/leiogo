@@ -113,28 +113,47 @@ func (p *FilePipeline) Process(item *leiogo.Item, spider *leiogo.Spider) error {
 // This can help you debug.
 type JSONPipeline struct {
 	Base
+
+	// The file to write the items. If this is set to an empty string,
+	// the pipeline will write it to stdout.
+	FileName string
+
 	file *os.File
 }
 
 func (j *JSONPipeline) Process(item *leiogo.Item, spider *leiogo.Spider) error {
-	_, err := j.file.WriteString(item.String() + "\n")
-	return err
+	if j.FileName == "" {
+		j.Logger.Info(spider.Name, item.String())
+		return nil
+	} else {
+		_, err := j.file.WriteString(item.String() + "\n")
+		return err
+	}
 }
 
 func (j *JSONPipeline) Open(spider *leiogo.Spider) error {
 	var err error
-	if j.file, err = os.Create("items.json"); err != nil {
-		j.Logger.Error(spider.Name, "Create file items.json fail, %s", err)
+	if j.FileName == "" {
+		j.Logger.Info(spider.Name, "Write items to stdout")
+		return nil
+	}
+
+	if j.file, err = os.Create(j.FileName); err != nil {
+		j.Logger.Error(spider.Name, "Create file %s fail, %s", j.FileName, err)
 	} else {
-		j.Logger.Info(spider.Name, "Create file items.json")
+		j.Logger.Info(spider.Name, "Create file %s", j.FileName)
 	}
 	return err
 }
 
 func (j *JSONPipeline) Close(reason string, spider *leiogo.Spider) error {
 	var err error
+	if j.FileName == "" {
+		return nil
+	}
+
 	if err = j.file.Close(); err != nil {
-		j.Logger.Error(spider.Name, "Close file items.json fail, %s", err)
+		j.Logger.Error(spider.Name, "Close file %s fail, %s", j.FileName, err)
 	}
 	return err
 }

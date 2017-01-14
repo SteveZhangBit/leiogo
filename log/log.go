@@ -17,7 +17,7 @@ const (
 )
 
 var (
-	LogLevel = Debug
+	LogLevel = Info
 	levels   = [...]string{"FATAL", "ERROR", "INFO", "DEBUG", "TRACE"}
 )
 

@@ -95,12 +95,19 @@ func (c *Crawler) Crawl(spider *leiogo.Spider) {
 	// it will wait for the running requests and items to complete,
 	// and refuse any further product.
 	interrupt := make(chan os.Signal, 1)
+	closed := make(chan bool)
 	signal.Notify(interrupt, os.Interrupt)
 	go func() {
-		<-interrupt
-		c.StatusInfo.Closed = true
-		c.StatusInfo.Reason = "User interrupted"
-		c.Logger.Info(spider.Name, "Get user interrupt signal, waiting the running requests to complete")
+		for {
+			select {
+			case <-interrupt:
+				c.StatusInfo.Closed = true
+				c.StatusInfo.Reason = "User interrupted"
+				c.Logger.Info(spider.Name, "Get user interrupt signal, waiting the running requests to complete")
+			case <-closed:
+				break
+			}
+		}
 	}()
 
 	// If there isn't any start urls, then directly close the spider.
@@ -113,6 +120,7 @@ func (c *Crawler) Crawl(spider *leiogo.Spider) {
 		go func() {
 			c.count.Wait()
 			close(c.requests)
+			closed <- true
 		}()
 
 		c.Logger.Info(spider.Name, "Adding start URLs")

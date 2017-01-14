@@ -26,6 +26,11 @@ type DefaultParser struct {
 
 func (d *DefaultParser) RunPattern(patterns map[string]PatternFunc, res *leiogo.Response, spider *leiogo.Spider) {
 	doc := selector.Parse(string(res.Body))
+	if doc.Err != nil {
+		d.Logger.Error(spider.Name, "Error at parsing response body, %s", doc.Err)
+		return
+	}
+
 	for key, f := range patterns {
 		var el *selector.Elements
 
@@ -35,6 +40,8 @@ func (d *DefaultParser) RunPattern(patterns map[string]PatternFunc, res *leiogo.
 				d.Logger.Error(spider.Name, "Error at querying %s, %s", key, el.Err)
 				continue
 			}
+		} else {
+			el = doc
 		}
 
 		for _, val := range f(el) {
@@ -121,8 +128,9 @@ func NewFilePipeline(dir string) middleware.ItemPipeline {
 	}
 }
 
-func NewJSONPipeline() middleware.ItemPipeline {
+func NewJSONPipeline(name string) middleware.ItemPipeline {
 	return &middleware.JSONPipeline{
-		Base: middleware.NewBasePipeline("JSONPipeline"),
+		Base:     middleware.NewBasePipeline("JSONPipeline"),
+		FileName: name,
 	}
 }

@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
+	"net/http/cookiejar"
 	"net/url"
 	"os"
 	"os/exec"
@@ -38,6 +39,12 @@ type DefaultDownloader struct {
 	UserAgent string
 
 	Logger log.Logger
+
+	// From the page https://golang.org/pkg/net/http/#Client:
+	// the Client's Transport typically has internal state (cached TCP connections),
+	// so Clients should be reused instead of created as needed.
+	// Clients are safe for concurrent use by multiple goroutines.
+	client *http.Client
 }
 
 func (d *DefaultDownloader) Download(req *leiogo.Request, spider *leiogo.Spider) (leioRes *leiogo.Response) {
@@ -61,9 +68,12 @@ func (d *DefaultDownloader) Download(req *leiogo.Request, spider *leiogo.Spider)
 }
 
 func (d *DefaultDownloader) getResponse(req *leiogo.Request) (*http.Response, error) {
-	client, err := d.ConfigClient()
-	if err != nil {
-		return nil, err
+	if d.client == nil {
+		var err error
+		d.client, err = d.ConfigClient()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	if getReq, err := http.NewRequest("GET", req.URL, nil); err != nil {
@@ -72,7 +82,7 @@ func (d *DefaultDownloader) getResponse(req *leiogo.Request) (*http.Response, er
 		if d.UserAgent != "" {
 			getReq.Header.Set("User-Agent", d.UserAgent)
 		}
-		return client.Do(getReq)
+		return d.client.Do(getReq)
 	}
 }
 
@@ -189,7 +199,15 @@ type DefaultConfig struct {
 }
 
 func (c *DefaultConfig) ConfigClient() (*http.Client, error) {
-	client := &http.Client{Timeout: time.Duration(c.Timeout) * time.Second}
+	jar, err := cookiejar.New(nil)
+	if err != nil {
+		return nil, err
+	}
+
+	client := &http.Client{
+		Timeout: time.Duration(c.Timeout) * time.Second,
+		Jar:     jar,
+	}
 	return client, nil
 }
 
@@ -214,18 +232,28 @@ func defaultTransport() *http.Transport {
 }
 
 func (c *ProxyConfig) ConfigClient() (*http.Client, error) {
-	if proxyURL, err := url.Parse(c.ProxyURL); err == nil {
-		transport := defaultTransport()
+	var proxyURL *url.URL
+	var jar *cookiejar.Jar
+	var err error
 
-		transport.Proxy = http.ProxyURL(proxyURL)
-
-		client := &http.Client{
-			Transport: transport,
-			Timeout:   time.Duration(c.Timeout) * time.Second,
-		}
-
-		return client, nil
-	} else {
+	jar, err = cookiejar.New(nil)
+	if err != nil {
 		return nil, err
 	}
+
+	proxyURL, err = url.Parse(c.ProxyURL)
+	if err != nil {
+		return nil, err
+	}
+
+	transport := defaultTransport()
+	transport.Proxy = http.ProxyURL(proxyURL)
+
+	client := &http.Client{
+		Transport: transport,
+		Timeout:   time.Duration(c.Timeout) * time.Second,
+		Jar:       jar,
+	}
+
+	return client, nil
 }

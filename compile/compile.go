@@ -256,6 +256,23 @@ func createPatternFunc(dic map[string]interface{}) (code string) {
 				code += fmt.Sprintf("products = append(products, %s)\n", createRequest(req.(map[string]interface{})))
 			}
 
+		case "if":
+			for i, statement := range val.([]interface{}) {
+				condition, body := createIfStatement(statement.(map[string]interface{}))
+				if i == 0 {
+					code += fmt.Sprintf("if %s {\n%s}", condition, body)
+				} else if condition != "" {
+					code += fmt.Sprintf(" else if %s {\n%s}", condition, body)
+				} else {
+					code += fmt.Sprintf(" else {\n%s}", body)
+				}
+			}
+
+		case "lines":
+			for _, line := range val.([]interface{}) {
+				code += line.(string) + "\n"
+			}
+
 		default:
 			// for loop pattern
 			if regexp.MustCompile(`^for \w+, ?\w+ in .+`).MatchString(key) {
@@ -265,6 +282,13 @@ func createPatternFunc(dic map[string]interface{}) (code string) {
 				panic(fmt.Sprintf("Unknown keywors at %s, %v", key, val))
 			}
 		}
+	}
+	return
+}
+
+func createIfStatement(statement map[string]interface{}) (condition, body string) {
+	for key, val := range statement {
+		return key, createPatternFunc(val.(map[string]interface{}))
 	}
 	return
 }

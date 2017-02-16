@@ -62,6 +62,7 @@ func NewDownloader() middleware.Downloader {
 		Logger:       log.New("Downloader"),
 		ClientConfig: &middleware.DefaultConfig{Timeout: Timeout},
 		UserAgent:    UserAgent,
+		FileWriter:   &middleware.FSWriter{},
 	}
 }
 
@@ -70,6 +71,7 @@ func NewProxyDownloader(url string) middleware.Downloader {
 		Logger:       log.New("ProxyDownloader"),
 		ClientConfig: &middleware.ProxyConfig{Timeout: Timeout, ProxyURL: url},
 		UserAgent:    UserAgent,
+		FileWriter:   &middleware.FSWriter{},
 	}
 }
 
@@ -123,8 +125,9 @@ func NewReferenceURLMiddleware() middleware.SpiderMiddleware {
 
 func NewFilePipeline(dir string) middleware.ItemPipeline {
 	return &middleware.FilePipeline{
-		Base:    middleware.NewBasePipeline("FilePipeline"),
-		DirPath: dir,
+		Base:       middleware.NewBasePipeline("FilePipeline"),
+		DirPath:    dir,
+		FileWriter: &middleware.FSWriter{},
 	}
 }
 

@@ -38,6 +38,9 @@ type FilePipeline struct {
 	DirPath string
 
 	Yielder
+
+	// See the definition of this interface in downloader.go .
+	FileWriter
 }
 
 func (p *FilePipeline) Open(spider *leiogo.Spider) error {
@@ -90,7 +93,7 @@ func (p *FilePipeline) Process(item *leiogo.Item, spider *leiogo.Spider) error {
 
 		// Somtimes we will run the spider for several times, and there's no need to download
 		// the files which are already exists, therefore we will first check the existance of the file.
-		if info, err := os.Stat(filepath); os.IsNotExist(err) || info.Size() < 512 {
+		if p.NotExists(filepath) {
 
 			// We might directely download the file here, but that's not a good idea.
 			// We still want to take advantage of our previous work, like delay, offsite,

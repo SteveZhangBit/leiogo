@@ -16,6 +16,11 @@ var (
 	Timeout            = 30
 	ConcurrentRequests = 32
 	UserAgent          = ""
+	FileSaveDir        = "./files"
+
+	// When we want to change the default file writer in downloader,
+	// we simply change this value.
+	DownloaderFileWriter middleware.FileWriter = &middleware.FSWriter{}
 )
 
 type PatternFunc func(el *selector.Elements) []interface{}
@@ -62,7 +67,7 @@ func NewDownloader() middleware.Downloader {
 		Logger:       log.New("Downloader"),
 		ClientConfig: &middleware.DefaultConfig{Timeout: Timeout},
 		UserAgent:    UserAgent,
-		FileWriter:   &middleware.FSWriter{},
+		FileWriter:   DownloaderFileWriter,
 	}
 }
 
@@ -71,7 +76,7 @@ func NewProxyDownloader(url string) middleware.Downloader {
 		Logger:       log.New("ProxyDownloader"),
 		ClientConfig: &middleware.ProxyConfig{Timeout: Timeout, ProxyURL: url},
 		UserAgent:    UserAgent,
-		FileWriter:   &middleware.FSWriter{},
+		FileWriter:   DownloaderFileWriter,
 	}
 }
 
@@ -127,7 +132,7 @@ func NewFilePipeline(dir string) middleware.ItemPipeline {
 	return &middleware.FilePipeline{
 		Base:       middleware.NewBasePipeline("FilePipeline"),
 		DirPath:    dir,
-		FileWriter: &middleware.FSWriter{},
+		FileWriter: DownloaderFileWriter,
 	}
 }
 

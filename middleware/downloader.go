@@ -13,6 +13,8 @@ import (
 	"os/exec"
 	"time"
 
+	"github.com/garyburd/redigo/redis"
+
 	"github.com/SteveZhangBit/leiogo"
 	"github.com/SteveZhangBit/leiogo/log"
 )
@@ -282,4 +284,47 @@ func (c *ProxyConfig) ConfigClient() (*http.Client, error) {
 	}
 
 	return client, nil
+}
+
+type RedisWriter struct {
+	Addr string
+}
+
+func (r *RedisWriter) NotExists(filepath string) bool {
+	if conn, err := redis.Dial("tcp", r.Addr); err != nil {
+		return true
+	} else {
+		defer conn.Close()
+
+		exists, err := conn.Do("EXISTS", filepath)
+		return err != nil || exists.(int64) != 1
+	}
+}
+
+func (r *RedisWriter) WriteFile(req *leiogo.Request, res *http.Response) (info string, writerErr error) {
+	filepath := req.Meta["__filepath__"].(string)
+
+	var conn redis.Conn
+	conn, writerErr = redis.Dial("tcp", r.Addr)
+	if writerErr != nil {
+		return
+	}
+	defer conn.Close()
+
+	var body []byte
+	body, writerErr = ioutil.ReadAll(res.Body)
+	if writerErr != nil {
+		return
+	}
+
+	_, writerErr = conn.Do("SET", filepath, body)
+	if writerErr != nil {
+		return
+	}
+	writerErr = &DropTaskError{Message: "File cached completed"}
+	return fmt.Sprintf("Cached %s to redis at %s", filepath, r.Addr), writerErr
+}
+
+func NewRedisWriter(addr string) *RedisWriter {
+	return &RedisWriter{Addr: addr}
 }

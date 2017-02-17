@@ -43,6 +43,7 @@ func DefaultCrawlerBuilder() *CrawlerBuilder {
 		NewReferenceURLMiddleware(),
 		NewDepthMiddleware(),
 	)
+	c.AddItemPipelines(NewFilePipeline(FileSaveDir))
 	return c
 }
 
@@ -90,10 +91,5 @@ func (c *CrawlerBuilder) AddItemPipelines(ps ...middleware.ItemPipeline) *Crawle
 		c.addYielder(p)
 		c.Crawler.ItemPipelines = append(c.Crawler.ItemPipelines, p)
 	}
-	return c
-}
-
-func (c *CrawlerBuilder) AddFileDownloadSupport(path string) *CrawlerBuilder {
-	c.AddItemPipelines(NewFilePipeline(path))
 	return c
 }

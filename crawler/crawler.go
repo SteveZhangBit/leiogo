@@ -51,6 +51,10 @@ type Crawler struct {
 	SpiderMiddlewares   []middleware.SpiderMiddleware
 	Downloader          middleware.Downloader
 
+	// In some case, we want to add some additional spider open/close listeners which do
+	// not belong to any middleware, usually they only implement the OpenClose interface.
+	OpenCloses []middleware.OpenClose
+
 	// There should be at least one parser named 'default'.
 	Parsers map[string]middleware.Parser
 
@@ -87,6 +91,9 @@ func (c *Crawler) Crawl(spider *leiogo.Spider) {
 		m.Open(spider)
 	}
 	for _, m := range c.ItemPipelines {
+		m.Open(spider)
+	}
+	for _, m := range c.OpenCloses {
 		m.Open(spider)
 	}
 
@@ -152,6 +159,9 @@ func (c *Crawler) Crawl(spider *leiogo.Spider) {
 		m.Close(c.StatusInfo.Reason, spider)
 	}
 	for _, m := range c.ItemPipelines {
+		m.Close(c.StatusInfo.Reason, spider)
+	}
+	for _, m := range c.OpenCloses {
 		m.Close(c.StatusInfo.Reason, spider)
 	}
 	c.StatusInfo.EndDate = time.Now()

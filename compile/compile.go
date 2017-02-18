@@ -23,6 +23,11 @@ import (
 // user defined imports
 %s
 
+// user defined vars
+var (
+%s
+)
+
 func init() {
 // config crawler
 %s
@@ -83,6 +88,7 @@ return products
 
 var (
 	CodeImports   = ""
+	CodeVars      = ""
 	CodeFunctions = ""
 	CodeCrawler   = ""
 	CodeLogger    = ""
@@ -114,6 +120,10 @@ func main() {
 				case "imports":
 					ConfigImports(val.([]interface{}))
 
+				// "vars" defines the user defined global variables.
+				case "vars":
+					ConfigVars(val.([]interface{}))
+
 				// "crawler" indicates the crawler package. We have defined some
 				// const in the package, like DepthLimit, RetryTimes.
 				case "crawler":
@@ -143,6 +153,7 @@ func main() {
 			target, _ := os.Create(os.Args[1] + ".go")
 			fmt.Fprintf(target, MainTemplate,
 				CodeImports,
+				CodeVars,
 				CodeCrawler,
 				CodeLogger,
 				CodeFunctions,
@@ -161,6 +172,14 @@ func main() {
 func ConfigImports(a []interface{}) {
 	for _, val := range a {
 		CodeImports += fmt.Sprintf("import \"%s\"\n", val.(string))
+	}
+}
+
+func ConfigVars(a []interface{}) {
+	for _, i := range a {
+		for key, val := range i.(map[string]interface{}) {
+			CodeVars += fmt.Sprintf("%s = %v\n", key, eval(val))
+		}
 	}
 }
 

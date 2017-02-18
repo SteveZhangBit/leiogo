@@ -27,6 +27,7 @@ func CreateCrawlerBuilder() *CrawlerBuilder {
 		Parsers:             make(map[string]middleware.Parser),
 		ItemPipelines:       make([]middleware.ItemPipeline, 0),
 		Downloader:          NewDownloader(),
+		OpenCloses:          make([]middleware.OpenClose, 0),
 	}}
 }
 
@@ -90,6 +91,13 @@ func (c *CrawlerBuilder) AddItemPipelines(ps ...middleware.ItemPipeline) *Crawle
 	for _, p := range ps {
 		c.addYielder(p)
 		c.Crawler.ItemPipelines = append(c.Crawler.ItemPipelines, p)
+	}
+	return c
+}
+
+func (c *CrawlerBuilder) AddOpenCloses(ms ...middleware.OpenClose) *CrawlerBuilder {
+	for _, m := range ms {
+		c.Crawler.OpenCloses = append(c.Crawler.OpenCloses, m)
 	}
 	return c
 }

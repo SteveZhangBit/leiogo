@@ -49,9 +49,21 @@ func (d *DefaultParser) RunPattern(patterns map[string]PatternFunc, res *leiogo.
 			el = doc
 		}
 
-		for _, val := range f(el) {
+		products := f(el)
+		// If there's nothing produced by this pattern, make a warning to the user
+		// that the pattern may be invalid.
+		if len(products) == 0 {
+			d.Logger.Fatal(spider.Name, "Nothing produced by pattern '%s' for %s, check if it's still valid!", key, res.URL)
+		}
+
+		for _, val := range products {
 			switch x := val.(type) {
 			case *leiogo.Item:
+				// Somtimes user may produce a file download item, but there's nothing in it,
+				// because of the invalidation of the pattern.
+				if us, ok := x.Data["fileurls"]; ok && len(us.([]string)) == 0 {
+					d.Logger.Fatal(spider.Name, "Nothing in the item by pattern '%s' for %s, check if it's still valid!", key, res.URL)
+				}
 				d.NewItem(x, spider)
 			case *leiogo.Request:
 				d.NewRequest(x, res, spider)

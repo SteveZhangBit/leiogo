@@ -1,38 +1,10 @@
 package crawler
 
 import (
-	"os"
-	"os/signal"
-	"time"
-
 	"github.com/SteveZhangBit/leiogo"
 	"github.com/SteveZhangBit/leiogo/log"
 	"github.com/SteveZhangBit/leiogo/middleware"
-	"github.com/SteveZhangBit/leiogo/util"
 )
-
-type StatusInfo struct {
-	StartDate time.Time
-	EndDate   time.Time
-
-	// Number of pages yielded by the spider, including the droped ones.
-	Pages int
-
-	// Number of pages successfully downloaded by the downloader.
-	Crawled int
-
-	// Number of pages successfully reaching the parsers.
-	Succeed int
-
-	// All items yielded, including the droped ones.
-	Items int
-
-	// If user enable image download feature for the crawler, this field will show how many images have downloaded.
-	Files int
-
-	Reason string
-	Closed bool
-}
 
 type Crawler struct {
 	// The buffered channel object for producing and consuming requests.
@@ -69,8 +41,8 @@ type Crawler struct {
 func (c *Crawler) addRequest(req *leiogo.Request) {
 	// Add a new request to the queue. Pay attention that we call the channel method
 	// in a new goroutine, in case deadlock problem.
-	if !c.StatusInfo.Closed {
-		c.StatusInfo.Pages++
+	if !c.StatusInfo.IsInterrupt() {
+		c.StatusInfo.AddPage()
 		c.count.Add()
 		go func() { c.requests <- req }()
 	}
@@ -78,12 +50,12 @@ func (c *Crawler) addRequest(req *leiogo.Request) {
 
 // After finishing initializing the crawler, call this method to start the spider.
 func (c *Crawler) Crawl(spider *leiogo.Spider) {
-	c.StatusInfo.StartDate = time.Now()
-	c.StatusInfo.Reason = "Jobs completed"
-
 	c.Logger.Info(spider.Name, "Start spider")
 	// When starting the spider, we have to call all the Open methods of the middlewares.
 	// TODO: These lines should be refined in the future.
+	for _, m := range c.OpenCloses {
+		m.Open(spider)
+	}
 	for _, m := range c.DownloadMiddlewares {
 		m.Open(spider)
 	}
@@ -93,29 +65,6 @@ func (c *Crawler) Crawl(spider *leiogo.Spider) {
 	for _, m := range c.ItemPipelines {
 		m.Open(spider)
 	}
-	for _, m := range c.OpenCloses {
-		m.Open(spider)
-	}
-
-	// The crawler will catch the interrupt signal from OS.
-	// The process won't stop immediately when user press ctrl+c, instead,
-	// it will wait for the running requests and items to complete,
-	// and refuse any further product.
-	interrupt := make(chan os.Signal, 1)
-	closed := make(chan bool)
-	signal.Notify(interrupt, os.Interrupt)
-	go func() {
-		for {
-			select {
-			case <-interrupt:
-				c.StatusInfo.Closed = true
-				c.StatusInfo.Reason = "User interrupted"
-				c.Logger.Info(spider.Name, "Get user interrupt signal, waiting the running requests to complete")
-			case <-closed:
-				break
-			}
-		}
-	}()
 
 	// If there isn't any start urls, then directly close the spider.
 	// Otherwise, the program will wait forever.
@@ -127,7 +76,6 @@ func (c *Crawler) Crawl(spider *leiogo.Spider) {
 		go func() {
 			c.count.Wait()
 			close(c.requests)
-			closed <- true
 		}()
 
 		c.Logger.Info(spider.Name, "Adding start URLs")
@@ -152,32 +100,18 @@ func (c *Crawler) Crawl(spider *leiogo.Spider) {
 
 	c.Logger.Info(spider.Name, "Closing spider")
 	// TODO: These lines are the same to the Open methods above and should be refined in the future.
-	for _, m := range c.DownloadMiddlewares {
+	for _, m := range c.ItemPipelines {
 		m.Close(c.StatusInfo.Reason, spider)
 	}
 	for _, m := range c.SpiderMiddlewares {
 		m.Close(c.StatusInfo.Reason, spider)
 	}
-	for _, m := range c.ItemPipelines {
+	for _, m := range c.DownloadMiddlewares {
 		m.Close(c.StatusInfo.Reason, spider)
 	}
 	for _, m := range c.OpenCloses {
 		m.Close(c.StatusInfo.Reason, spider)
 	}
-	c.StatusInfo.EndDate = time.Now()
-	c.printStatus(spider)
-}
-
-func (c *Crawler) printStatus(spider *leiogo.Spider) {
-	c.Logger.Info(spider.Name, "%-10s - %s", "Start Date", c.StatusInfo.StartDate.Format("2006-01-02 15:04:05"))
-	c.Logger.Info(spider.Name, "%-10s - %s", "End Date", c.StatusInfo.EndDate.Format("2006-01-02 15:04:05"))
-	c.Logger.Info(spider.Name, "%-10s - %s", "Duration", util.FormatDuration(c.StatusInfo.EndDate.Sub(c.StatusInfo.StartDate)))
-	c.Logger.Info(spider.Name, "%-10s - %d", "Pages", c.StatusInfo.Pages)
-	c.Logger.Info(spider.Name, "%-10s - %d", "Crawled", c.StatusInfo.Crawled)
-	c.Logger.Info(spider.Name, "%-10s - %d", "Succeed", c.StatusInfo.Succeed)
-	c.Logger.Info(spider.Name, "%-10s - %d", "Items", c.StatusInfo.Items)
-	c.Logger.Info(spider.Name, "%-10s - %d", "Files", c.StatusInfo.Files)
-	c.Logger.Info(spider.Name, "%-10s - %s", "Reason", c.StatusInfo.Reason)
 }
 
 // When there's a error from the middleware, first we need to identify whether it's a DropTaskError.
@@ -205,6 +139,8 @@ func (c *Crawler) handleErr(err error, req *leiogo.Request,
 // in spider middleware. This is a technical design :)
 // See more information about middlewares in middleware package.
 func (c *Crawler) crawl(req *leiogo.Request, spider *leiogo.Spider) {
+	c.StatusInfo.AddRunningPage(req)
+
 	for _, m := range c.DownloadMiddlewares {
 		if ok := c.handleErr(m.ProcessRequest(req, spider), req, m, spider); !ok {
 			return
@@ -212,7 +148,7 @@ func (c *Crawler) crawl(req *leiogo.Request, spider *leiogo.Spider) {
 	}
 
 	res := c.Downloader.Download(req, spider)
-	c.StatusInfo.Crawled++
+	c.StatusInfo.AddCrawled()
 
 	// Check whether the request is a static file request.
 	if typeName, ok := req.Meta["__type__"]; ok && typeName.(string) == "file" {
@@ -222,7 +158,7 @@ func (c *Crawler) crawl(req *leiogo.Request, spider *leiogo.Spider) {
 		// a DropTaskErr in the Err field.
 		switch res.Err.(type) {
 		case *middleware.DropTaskError:
-			c.StatusInfo.Files++
+			c.StatusInfo.AddFiles()
 		default:
 		}
 	}
@@ -244,7 +180,7 @@ func (c *Crawler) crawl(req *leiogo.Request, spider *leiogo.Spider) {
 	} else {
 		parser(res, req, spider)
 	}
-	c.StatusInfo.Succeed++
+	c.StatusInfo.AddSucceed(req)
 }
 
 // Create a new request, pay attention that we have to pass in the parent response here.
@@ -263,7 +199,7 @@ func (c *Crawler) NewRequest(req *leiogo.Request, parRes *leiogo.Response, spide
 
 // Create a new item, and make it pass through the item pipelines.
 func (c *Crawler) NewItem(item *leiogo.Item, spider *leiogo.Spider) error {
-	c.StatusInfo.Items++
+	c.StatusInfo.AddItem()
 	c.count.Add()
 	go func() {
 		for _, p := range c.ItemPipelines {

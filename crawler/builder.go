@@ -17,18 +17,22 @@ func (c *CrawlerBuilder) Build() *Crawler {
 }
 
 func CreateCrawlerBuilder() *CrawlerBuilder {
-	return &CrawlerBuilder{Crawler: &Crawler{
-		requests:            make(chan *leiogo.Request, 1),
-		tokens:              make(chan struct{}, ConcurrentRequests),
-		count:               ConcurrentCount{done: make(chan bool, 1)},
-		Logger:              log.New("Crawler"),
-		DownloadMiddlewares: make([]middleware.DownloadMiddleware, 0),
-		SpiderMiddlewares:   make([]middleware.SpiderMiddleware, 0),
-		Parsers:             make(map[string]middleware.Parser),
-		ItemPipelines:       make([]middleware.ItemPipeline, 0),
-		Downloader:          NewDownloader(),
-		OpenCloses:          make([]middleware.OpenClose, 0),
+	builder := &CrawlerBuilder{Crawler: &Crawler{
+		requests:   make(chan *leiogo.Request, 1),
+		tokens:     make(chan struct{}, ConcurrentRequests),
+		count:      ConcurrentCount{done: make(chan bool, 1)},
+		Logger:     log.New("Crawler"),
+		Parsers:    make(map[string]middleware.Parser),
+		Downloader: NewDownloader(),
+		StatusInfo: StatusInfo{Logger: log.New("Crawler")},
 	}}
+
+	builder.AddOpenCloses(
+		&UserInterrupt{Logger: log.New("Crawler"), StatusInfo: &builder.Crawler.StatusInfo},
+		&builder.Crawler.StatusInfo,
+	)
+
+	return builder
 }
 
 func DefaultCrawlerBuilder() *CrawlerBuilder {
